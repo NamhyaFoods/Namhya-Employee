@@ -1,0 +1,443 @@
+# ============================================
+# 📦 DEPENDENCIES
+# ============================================
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+pip-log.txt
+pip-delete-this-directory.txt
+pip-selfcheck.json
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+*.pyi
+
+# Node.js / JavaScript
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Frontend Build
+dist/
+dist-ssr/
+*.local
+build/
+out/
+.next/
+.nuxt/
+.cache/
+
+# ============================================
+# 🔐 ENVIRONMENT & SECRETS
+# ============================================
+
+# Environment Variables (⚠️ CRITICAL!)
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+.env.test
+.env.staging
+.env.example.local
+
+# Secrets & Keys
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.truststore
+*.id_rsa
+*.id_rsa.pub
+*.secret
+*.token
+*.api-key
+*.credentials
+
+# Supabase
+supabase/.temp/
+supabase/.env
+supabase/migrations/backup/
+
+# AWS
+.aws/
+credentials
+config
+*.pem
+*.ppk
+
+# ============================================
+# 🗄️ DATABASES
+# ============================================
+
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite-journal
+
+# Postgres
+*.pgdump
+*.backup
+*.dump
+
+# ============================================
+# 🖥️ OPERATING SYSTEM FILES
+# ============================================
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+
+# Mac
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+
+# Linux
+*~
+.directory
+*.swp
+*.swo
+*.swn
+*.swm
+*.tmp
+.dmrc
+.gnupg/
+.thumbnails/
+.nfs*
+
+# ============================================
+# 🛠️ IDE & EDITORS
+# ============================================
+
+# VS Code
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+*.code-workspace
+.vscode-test/
+
+# IntelliJ / WebStorm / PyCharm
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+.idea_modules/
+*.class
+*.jar
+*.war
+*.ear
+target/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+.sublime/
+
+# Vim
+*.swp
+*.swo
+*.un~
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Atom
+.atom/
+*.atomproject
+
+# Brackets
+*.brackets
+
+# ============================================
+# 📦 BUILD & COMPILATION
+# ============================================
+
+# Python Build
+*.egg-info/
+*.egg
+dist/
+build/
+develop-eggs/
+downloads/
+eggs/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# TypeScript / JavaScript Build
+*.tsbuildinfo
+*.js.map
+*.d.ts.map
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.jsp
+target/
+
+# C/C++
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+*.out
+*.app
+
+# ============================================
+# 📂 LOGS & TEMPORARY FILES
+# ============================================
+
+# Logs
+logs/
+*.log
+*.log.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+lerna-debug.log*
+
+# Temp
+tmp/
+temp/
+*.tmp
+*.temp
+*.cache
+*.cached
+*.swp
+*.swo
+*.swn
+*.~*
+
+# ============================================
+# 🧪 TESTING
+# ============================================
+
+# Coverage
+coverage/
+.nyc_output/
+*.lcov
+*.coverdata
+*.coverage
+*.coverage.*
+
+# Test Reports
+test-reports/
+test-results/
+junit.xml
+*.testlog
+*.test-result
+
+# ============================================
+# 📄 DOCUMENTATION
+# ============================================
+
+# Generated Docs
+docs/_build/
+docs/.build/
+*.epub
+*.mobi
+*.pdf
+*.odt
+*.docx
+
+# ============================================
+# 🐳 DOCKER
+# ============================================
+
+docker-compose.override.yml
+*.dockerignore
+.Dockerfile
+*.dockerfile
+Dockerfile.*
+docker/
+.docker/
+!Dockerfile
+!*.dockerfile
+
+# ============================================
+# 🌐 WEB & FRONTEND
+# ============================================
+
+# Webpack
+webpack-stats.json
+*.stats.json
+
+# Gatsby
+.cache/
+public/
+static/
+
+# Next.js
+.next/
+out/
+.nuxt/
+
+# Vite
+*.vite/
+.vite/
+
+# Create React App
+build/
+*.test.js
+*.test.ts
+*.test.tsx
+*.test.jsx
+
+# ============================================
+# 🤖 CI/CD
+# ============================================
+
+.github/
+.gitlab/
+.ci/
+.git/
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+*.plan
+
+# ============================================
+# 🚀 DEPLOYMENT
+# ============================================
+
+# Production Build
+*.prod
+*.production
+*.deploy
+*.deployed
+
+# ============================================
+# 📁 PROJECT SPECIFIC
+# ============================================
+
+# Uploads
+uploads/
+media/
+staticfiles/
+assets/
+
+# User Data
+*.csv
+*.xlsx
+*.xls
+*.json
+!package.json
+!tsconfig.json
+*.zip
+*.rar
+*.7z
+*.tar.gz
+*.tgz
+
+# Profile Data
+*.prof
+*.profdata
+*.profraw
+
+# ============================================
+# 🎯 MISCELLANEOUS
+# ============================================
+
+# Misc
+*.orig
+*.rej
+*.bak
+*.old
+*.backup
+*.tmp
+*.temp
+.DS_Store
+.idea/
+.classpath
+.project
+.settings/
+*.swp
+*.swo
+*.~
+*.lock
+*.pid
+*.seed
+*.pid.lock
+
+# ============================================
+# 📌 TURBO/PNPM
+# ============================================
+
+.turbo/
+.turbo-runtime/
+.pnpm-store/
