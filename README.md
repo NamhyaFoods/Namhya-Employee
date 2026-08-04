@@ -1,5 +1,4 @@
-📄 README.md (Minimal & Professional)
-markdown
+
 # 🚀 Employee Task & Performance Management Dashboard
 
 A secure, role-based platform for task allocation, time tracking, and automated performance evaluation.
