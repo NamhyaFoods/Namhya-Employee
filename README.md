@@ -49,79 +49,16 @@ npm install
 cp .env.example .env
 # Edit .env with API URL
 npm run dev
-4️⃣ Access
+---
+```
+##4️⃣ Access
+
 Frontend: http://localhost:5173
 
 Backend API: http://localhost:8000
 
 API Docs: http://localhost:8000/docs
 
-🔑 Default Login
-Role	Email	Password
-Admin	admin@company.com	Admin123!
-Manager	manager@company.com	Manager123!
-Employee	employee@company.com	Employee123!
-📁 Project Structure
-text
-backend/          # FastAPI backend
-frontend/         # React frontend
-supabase/         # Database migrations
-docs/             # Documentation
-📊 Progress
-text
-Database:   ████████████████████ 100% ✅
-Backend:    ████████████████████ 100% ✅
-Frontend:   ████████████████████ 100% ✅
-Testing:    ████████░░░░░░░░░░░░  40% ⏳
-Deployment: ░░░░░░░░░░░░░░░░░░░░   0% ⏳
-🔧 Environment Variables
-Backend (.env)
-env
-SUPABASE_URL=your_supabase_url
-SUPABASE_KEY=your_anon_key
-JWT_SECRET=your_secret_key
-CORS_ORIGINS=http://localhost:5173
-Frontend (.env)
-env
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_anon_key
-VITE_API_URL=http://localhost:8000/api/v1
-📚 API Documentation
-Once running: http://localhost:8000/docs
-
-Key endpoints:
-
-POST /api/v1/auth/login - Login
-
-GET /api/v1/tasks - Get tasks
-
-POST /api/v1/tasks - Create task (admin)
-
-GET /api/v1/performance/my-performance - My performance
-
-POST /api/v1/reviews/generate-all - Generate reviews (admin)
-
-🐛 Common Issues
-Login fails with "null value in column full_name"
-
-sql
--- Fix Supabase trigger
-CREATE OR REPLACE FUNCTION public.handle_new_auth_user()
- RETURNS trigger
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-begin
-  insert into public.users (auth_user_id, email, full_name, role)
-  values (
-    new.id,
-    new.email,
-    coalesce(new.raw_user_meta_data->>'full_name', new.email),
-    coalesce(new.raw_user_meta_data->>'role', 'employee')
-  );
-  return new;
-end;
-$function$
-
+---
 👤 Author
 Shreya R Chittaragi
