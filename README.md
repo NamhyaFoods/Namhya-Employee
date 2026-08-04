@@ -51,7 +51,7 @@ cp .env.example .env
 npm run dev
 ---
 ```
-##4️⃣ Access
+4️⃣ Access
 
 Frontend: http://localhost:5173
 
