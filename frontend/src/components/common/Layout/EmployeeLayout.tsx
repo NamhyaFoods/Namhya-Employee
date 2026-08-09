@@ -5,7 +5,7 @@ import TopBar from '../Navigation/TopBar'
 
 const EmployeeLayout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 bg-gradient-radial-glow bg-no-repeat">
       <EmployeeNav />
       <div className="ml-64">
         <TopBar />

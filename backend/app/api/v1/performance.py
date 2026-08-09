@@ -11,7 +11,7 @@ from app.schemas.performance import (
 from app.services.performance_service import PerformanceService
 from app.services.score_service import ScoreService
 from app.services.review_service import ReviewService
-from app.db.supabase import get_supabase
+from app.db.supabase import get_supabase, get_supabase_admin
 from app.dependencies import get_current_user, get_current_admin
 import logging
 
@@ -172,38 +172,76 @@ async def get_performance_trend(
 
 @router.get("/dashboard/admin")
 async def get_admin_dashboard(
-    supabase: Client = Depends(get_supabase),
     current_user: dict = Depends(get_current_admin)
 ):
-    """Get admin dashboard statistics"""
+    """Get admin dashboard statistics.
+
+    Uses the service-role client (see users.py get_users for the same
+    reasoning): this is already gated by get_current_admin, but the plain
+    anon client never carries the requesting user's session into Postgrest
+    calls, so auth.uid() is NULL and RLS silently returns zero rows/counts
+    for both the admin_dashboard_summary view and the manual fallback
+    queries below — which is why every card on the dashboard showed 0 even
+    though employees and tasks clearly exist (visible on pages that already
+    use the admin client).
+    """
     try:
+        supabase = get_supabase_admin()
         performance_service = PerformanceService(supabase)
         stats = await performance_service.get_admin_dashboard_stats()
         
         if not stats:
             # Calculate manually
+            from datetime import datetime, timezone
+
+            # Not filtered by role='employee': this mirrors the Employees
+            # page (usersApi.getAll(), no role filter), which lists every
+            # active user (admin/manager/employee) — kept consistent so
+            # this card's number matches what's visible on that page.
             total_employees = supabase.table('users')\
                 .select('id', count='exact')\
                 .eq('is_active', True)\
                 .execute()
-            
+
+            total_managers = supabase.table('users')\
+                .select('id', count='exact')\
+                .eq('is_active', True)\
+                .eq('role', 'manager')\
+                .execute()
+
             active_tasks = supabase.table('tasks')\
                 .select('id', count='exact')\
                 .neq('status', 'completed')\
                 .neq('status', 'cancelled')\
                 .execute()
-            
+
+            today = datetime.now(timezone.utc).date()
+            month_start = today.replace(day=1).isoformat()
+
+            tasks_completed_this_month = supabase.table('tasks')\
+                .select('id', count='exact')\
+                .eq('status', 'completed')\
+                .gte('completed_at', month_start)\
+                .execute()
+
+            overdue_tasks = supabase.table('tasks')\
+                .select('id', count='exact')\
+                .lt('due_date', today.isoformat())\
+                .neq('status', 'completed')\
+                .neq('status', 'cancelled')\
+                .execute()
+
             stats = {
                 'total_employees': total_employees.count,
                 'active_tasks': active_tasks.count,
-                'total_managers': 0,
-                'tasks_completed_this_month': 0,
+                'total_managers': total_managers.count,
+                'tasks_completed_this_month': tasks_completed_this_month.count,
                 'tasks_todo': 0,
                 'tasks_in_progress': 0,
                 'tasks_in_review': 0,
                 'tasks_on_hold': 0,
                 'tasks_cancelled': 0,
-                'overdue_tasks': 0,
+                'overdue_tasks': overdue_tasks.count,
                 'avg_efficiency_this_month': 0,
                 'avg_work_score_last_month': 0
             }

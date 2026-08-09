@@ -6,7 +6,7 @@ from app.schemas.user import UserLogin, UserCreate, UserResponse, TokenResponse
 from app.services.user_service import UserService
 from app.core.security import verify_password, create_access_token, get_password_hash
 from app.core.auth import verify_token
-from app.db.supabase import get_supabase
+from app.db.supabase import get_supabase, get_supabase_admin
 from app.dependencies import get_current_user, get_current_admin
 import logging
 
@@ -96,10 +96,16 @@ async def login(
 @router.post("/register", response_model=UserResponse)
 async def register(
     user_data: UserCreate,
-    supabase: Client = Depends(get_supabase),
     current_user: dict = Depends(get_current_admin)
 ):
-    """Register a new user (admin only)"""
+    """Register a new user (admin only).
+
+    Uses the service-role client, not the anon client, because this is a
+    privileged server-side operation (an admin creating a row on behalf of
+    someone else) that RLS policies on `users` are not designed to allow
+    directly. Authorization is already enforced above via get_current_admin;
+    bypassing RLS here is safe because it happens only after that check.
+    """
     try:
         if user_data.password != user_data.confirm_password:
             raise HTTPException(
@@ -107,6 +113,7 @@ async def register(
                 detail="Passwords do not match"
             )
         
+        supabase = get_supabase_admin()
         user_service = UserService(supabase)
         user = await user_service.create_user(user_data, current_user['id'])
         

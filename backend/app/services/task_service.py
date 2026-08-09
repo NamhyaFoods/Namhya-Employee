@@ -13,7 +13,11 @@ class TaskService:
     async def create_task(self, task_data: TaskCreate, assigned_by: str) -> Optional[Dict]:
         """Create a new task"""
         try:
-            task_dict = task_data.dict()
+            # Use mode='json' so date/datetime fields (start_date, due_date)
+            # are serialized to ISO strings rather than left as raw Python
+            # date objects, which the Supabase client can't JSON-encode
+            # ("Object of type date is not JSON serializable").
+            task_dict = task_data.model_dump(mode='json')
             task_dict['assigned_by'] = assigned_by
             task_dict['status'] = 'todo'
             task_dict['progress_percentage'] = 0
@@ -30,6 +34,29 @@ class TaskService:
             logger.error(f"Error creating task: {str(e)}")
             raise
 
+    @staticmethod
+    def _flatten_assignee_names(task: Dict) -> Dict:
+        """Flatten the nested Supabase join objects into the flat string
+        fields the response schemas (and the frontend) actually read.
+
+        get_all_tasks/get_task_by_id select a joined `assigned_to_user:
+        users!assigned_to(full_name, ...)` object, but TaskResponse /
+        TaskDetailResponse expect a plain `assigned_to_name` string. Since
+        the nested shape never matched the flat field name, every response
+        left `assigned_to_name` unset — the Admin Tasks table and task
+        detail views always showed "N/A" for the assignee regardless of
+        who a task was actually assigned to.
+        """
+        assigned_to_user = task.pop('assigned_to_user', None)
+        if assigned_to_user:
+            task['assigned_to_name'] = assigned_to_user.get('full_name')
+
+        assigned_by_user = task.pop('assigned_by_user', None)
+        if assigned_by_user:
+            task['assigned_by_name'] = assigned_by_user.get('full_name')
+
+        return task
+
     async def get_task_by_id(self, task_id: str, user_id: str) -> Optional[Dict]:
         """Get task by ID with access control"""
         try:
@@ -41,7 +68,7 @@ class TaskService:
             if not result.data:
                 return None
             
-            task = result.data[0]
+            task = self._flatten_assignee_names(result.data[0])
             return task
         except Exception as e:
             logger.error(f"Error fetching task: {str(e)}")
@@ -82,7 +109,8 @@ class TaskService:
                     query = query.eq('is_overdue', filters['is_overdue'])
             
             result = query.execute()
-            return result.data if result.data else []
+            tasks = result.data if result.data else []
+            return [self._flatten_assignee_names(t) for t in tasks]
         except Exception as e:
             logger.error(f"Error fetching all tasks: {str(e)}")
             return []

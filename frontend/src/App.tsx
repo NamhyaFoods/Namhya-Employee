@@ -15,6 +15,7 @@ import AdminTasks from './pages/Admin/Tasks'
 import AdminCreateTask from './pages/Admin/CreateTask'
 import AdminPerformance from './pages/Admin/Performance'
 import AdminMonthlyReview from './pages/Admin/MonthlyReview'
+import AdminReviewDetail from './pages/Admin/ReviewDetail'
 import AdminSettings from './pages/Admin/Settings'
 import EmployeeDashboard from './pages/Employee/Dashboard'
 import EmployeeMyTasks from './pages/Employee/MyTasks'
@@ -143,6 +144,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['admin', 'manager']}>
                     <AdminMonthlyReview />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/reviews/:id"
+                element={
+                  <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                    <AdminReviewDetail />
                   </ProtectedRoute>
                 }
               />

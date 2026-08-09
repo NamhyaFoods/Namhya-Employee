@@ -3,7 +3,7 @@ from supabase import Client
 from typing import List, Optional
 from app.schemas.user import UserResponse, UserUpdate, UserCreate, BulkImportResponse
 from app.services.user_service import UserService
-from app.db.supabase import get_supabase
+from app.db.supabase import get_supabase, get_supabase_admin
 from app.dependencies import get_current_user, get_current_admin
 import pandas as pd
 import io
@@ -15,11 +15,18 @@ logger = logging.getLogger(__name__)
 @router.get("/", response_model=List[UserResponse])
 async def get_users(
     role: Optional[str] = Query(None, description="Filter by role"),
-    supabase: Client = Depends(get_supabase),
     current_user: dict = Depends(get_current_admin)
 ):
-    """Get all users (admin only)"""
+    """Get all users (admin only).
+
+    Uses the service-role client: this endpoint is already gated by
+    get_current_admin, and the plain anon client never carries the
+    requesting user's own session into Postgrest calls, so auth.uid()
+    is always NULL there and RLS silently returns zero rows regardless
+    of who is actually asking.
+    """
     try:
+        supabase = get_supabase_admin()
         user_service = UserService(supabase)
         users = await user_service.get_all_users(current_user['id'], role)
         return [UserResponse(**user) for user in users]
@@ -32,11 +39,11 @@ async def get_users(
 
 @router.get("/employees", response_model=List[UserResponse])
 async def get_employees(
-    supabase: Client = Depends(get_supabase),
     current_user: dict = Depends(get_current_admin)
 ):
-    """Get all employees (users with employee role)"""
+    """Get all employees (users with employee role). See get_users for why the service-role client is used here."""
     try:
+        supabase = get_supabase_admin()
         user_service = UserService(supabase)
         users = await user_service.get_all_users(current_user['id'], 'employee')
         return [UserResponse(**user) for user in users]
@@ -50,10 +57,9 @@ async def get_employees(
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(
     user_id: str,
-    supabase: Client = Depends(get_supabase),
     current_user: dict = Depends(get_current_user)
 ):
-    """Get user by ID"""
+    """Get user by ID. See get_users for why the service-role client is used here."""
     try:
         # Check if user has access
         if current_user['id'] != user_id and current_user['role'] not in ['admin', 'manager']:
@@ -62,6 +68,7 @@ async def get_user(
                 detail="Access denied"
             )
         
+        supabase = get_supabase_admin()
         user_service = UserService(supabase)
         user = await user_service.get_user_by_id(user_id)
         
@@ -85,10 +92,9 @@ async def get_user(
 async def update_user(
     user_id: str,
     user_data: UserUpdate,
-    supabase: Client = Depends(get_supabase),
     current_user: dict = Depends(get_current_user)
 ):
-    """Update user information"""
+    """Update user information. See get_users for why the service-role client is used here."""
     try:
         # Check if user has access
         if current_user['id'] != user_id and current_user['role'] not in ['admin', 'manager']:
@@ -97,6 +103,7 @@ async def update_user(
                 detail="Access denied"
             )
         
+        supabase = get_supabase_admin()
         user_service = UserService(supabase)
         user = await user_service.update_user(user_id, user_data, current_user['id'])
         
@@ -119,10 +126,9 @@ async def update_user(
 @router.delete("/{user_id}")
 async def delete_user(
     user_id: str,
-    supabase: Client = Depends(get_supabase),
     current_user: dict = Depends(get_current_admin)
 ):
-    """Delete (deactivate) user (admin only)"""
+    """Delete (deactivate) user (admin only). See get_users for why the service-role client is used here."""
     try:
         if current_user['id'] == user_id:
             raise HTTPException(
@@ -130,6 +136,7 @@ async def delete_user(
                 detail="Cannot delete yourself"
             )
         
+        supabase = get_supabase_admin()
         user_service = UserService(supabase)
         result = await user_service.delete_user(user_id, current_user['id'])
         
@@ -152,11 +159,11 @@ async def delete_user(
 @router.post("/{user_id}/activate")
 async def activate_user(
     user_id: str,
-    supabase: Client = Depends(get_supabase),
     current_user: dict = Depends(get_current_admin)
 ):
-    """Activate a user (admin only)"""
+    """Activate a user (admin only). See get_users for why the service-role client is used here."""
     try:
+        supabase = get_supabase_admin()
         user_service = UserService(supabase)
         result = await user_service.activate_user(user_id)
         
@@ -177,10 +184,9 @@ async def activate_user(
 @router.get("/{user_id}/stats")
 async def get_user_stats(
     user_id: str,
-    supabase: Client = Depends(get_supabase),
     current_user: dict = Depends(get_current_user)
 ):
-    """Get user statistics"""
+    """Get user statistics. See get_users for why the service-role client is used here."""
     try:
         # Check access
         if current_user['id'] != user_id and current_user['role'] not in ['admin', 'manager']:
@@ -189,6 +195,7 @@ async def get_user_stats(
                 detail="Access denied"
             )
         
+        supabase = get_supabase_admin()
         user_service = UserService(supabase)
         stats = await user_service.get_user_statistics(user_id)
         
@@ -205,10 +212,14 @@ async def get_user_stats(
 @router.post("/bulk-import")
 async def bulk_import_users(
     file: UploadFile = File(...),
-    supabase: Client = Depends(get_supabase),
     current_user: dict = Depends(get_current_admin)
 ):
-    """Bulk import users from CSV/Excel (admin only)"""
+    """Bulk import users from CSV/Excel (admin only).
+
+    Uses the service-role client since each row creates a user record on
+    behalf of someone else, which RLS on `users` will otherwise reject
+    (see /register in auth.py for the same fix and rationale).
+    """
     try:
         contents = await file.read()
         # Parse file
@@ -222,6 +233,7 @@ async def bulk_import_users(
         imported = 0
         failed = 0
         errors = []
+        supabase = get_supabase_admin()
         user_service = UserService(supabase)
         
         for _, row in df.iterrows():

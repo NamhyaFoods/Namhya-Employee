@@ -24,7 +24,8 @@ interface ThemeProviderProps {
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [theme, setTheme] = useState<Theme>(() => {
     const saved = localStorage.getItem('theme')
-    return (saved as Theme) || 'light'
+    // Dark is this dashboard's primary theme per the new design system.
+    return (saved as Theme) || 'dark'
   })
 
   useEffect(() => {

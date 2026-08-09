@@ -20,7 +20,7 @@ const TaskDetail: React.FC = () => {
     <EmployeeLayout>
       <div className="p-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Task Detail</h1>
-        <div className="bg-white rounded-xl shadow-sm p-6">
+        <div className="bg-surface rounded-xl shadow-sm p-6">
           {loading ? (
             <p className="text-gray-500">Loading...</p>
           ) : task ? (

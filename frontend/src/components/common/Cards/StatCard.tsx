@@ -22,19 +22,19 @@ const StatCard: React.FC<StatCardProps> = ({
   trend,
 }) => {
   return (
-    <div className="card">
+    <div className="card group">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-gray-500">{title}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
-          {subtitle && <p className="text-xs text-gray-400 mt-1">{subtitle}</p>}
+          <p className="kpi-number text-3xl font-semibold text-gray-900 mt-1">{value}</p>
+          {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
           {trend && (
-            <p className={`text-xs mt-1 ${trend.direction === 'up' ? 'text-green-600' : 'text-red-600'}`}>
+            <p className={`text-xs font-mono mt-1 ${trend.direction === 'up' ? 'text-success' : 'text-danger'}`}>
               {trend.direction === 'up' ? '↑' : '↓'} {Math.abs(trend.value)}%
             </p>
           )}
         </div>
-        <div className={`p-3 rounded-lg ${color} text-white`}>
+        <div className={`p-3 rounded-xl ${color} text-white shadow-lg group-hover:scale-105 transition-transform duration-200`}>
           <Icon className="w-6 h-6" />
         </div>
       </div>

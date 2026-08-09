@@ -7,7 +7,13 @@ export const tasksApi = {
     assigned_to?: string
     priority?: string
   }): Promise<Task[]> => {
-    const response = await api.get('/tasks', { params: filters })
+    // Trailing slash matters here: the backend route is defined as
+    // `/tasks/` (via `@router.get("/")` under the `/tasks` prefix). Calling
+    // `/tasks` without it triggers FastAPI's automatic redirect to add the
+    // slash, and that redirect round-trip drops the Authorization header,
+    // causing the request to fail with 401 regardless of a valid token
+    // (same issue previously fixed for the users list endpoint).
+    const response = await api.get('/tasks/', { params: filters })
     return response.data
   },
 
@@ -23,7 +29,7 @@ export const tasksApi = {
   },
 
   create: async (data: TaskCreate): Promise<Task> => {
-    const response = await api.post('/tasks', data)
+    const response = await api.post('/tasks/', data)
     return response.data
   },
 

@@ -4,7 +4,7 @@ from typing import List, Optional
 from app.schemas.task import TaskCreate, TaskUpdate, TaskResponse, TaskDetailResponse, TaskStatsResponse, TaskStatusUpdate
 from app.services.task_service import TaskService
 from app.services.time_log_service import TimeLogService
-from app.db.supabase import get_supabase
+from app.db.supabase import get_supabase, get_supabase_admin
 from app.dependencies import get_current_user, get_current_admin
 import logging
 
@@ -14,11 +14,17 @@ logger = logging.getLogger(__name__)
 @router.post("/", response_model=TaskResponse)
 async def create_task(
     task_data: TaskCreate,
-    supabase: Client = Depends(get_supabase),
     current_user: dict = Depends(get_current_admin)
 ):
-    """Create a new task (admin/manager only)"""
+    """Create a new task (admin/manager only).
+
+    Uses the service-role client: this endpoint is already gated by
+    get_current_admin, and the anon client never carries the requesting
+    user's own session into Postgrest calls, so auth.uid() is always NULL
+    there and RLS blocks the insert regardless of who is actually asking.
+    """
     try:
+        supabase = get_supabase_admin()
         task_service = TaskService(supabase)
         task = await task_service.create_task(task_data, current_user['id'])
         
@@ -41,11 +47,11 @@ async def get_tasks(
     status_filter: Optional[str] = Query(None, description="Filter by status"),
     assigned_to: Optional[str] = Query(None, description="Filter by assigned user"),
     priority: Optional[str] = Query(None, description="Filter by priority"),
-    supabase: Client = Depends(get_supabase),
     current_user: dict = Depends(get_current_user)
 ):
-    """Get tasks (filtered by user role)"""
+    """Get tasks (filtered by user role). See create_task for why the service-role client is used here."""
     try:
+        supabase = get_supabase_admin()
         task_service = TaskService(supabase)
         
         # If admin/manager, get all tasks with filters
@@ -74,11 +80,11 @@ async def get_tasks(
 @router.get("/my-tasks", response_model=List[TaskResponse])
 async def get_my_tasks(
     status_filter: Optional[str] = Query(None, description="Filter by status"),
-    supabase: Client = Depends(get_supabase),
     current_user: dict = Depends(get_current_user)
 ):
-    """Get tasks assigned to current user"""
+    """Get tasks assigned to current user. See create_task for why the service-role client is used here."""
     try:
+        supabase = get_supabase_admin()
         task_service = TaskService(supabase)
         tasks = await task_service.get_user_tasks(current_user['id'], status_filter)
         return [TaskResponse(**task) for task in tasks]
@@ -92,11 +98,11 @@ async def get_my_tasks(
 @router.get("/{task_id}", response_model=TaskDetailResponse)
 async def get_task(
     task_id: str,
-    supabase: Client = Depends(get_supabase),
     current_user: dict = Depends(get_current_user)
 ):
-    """Get task by ID"""
+    """Get task by ID. See create_task for why the service-role client is used here."""
     try:
+        supabase = get_supabase_admin()
         task_service = TaskService(supabase)
         task = await task_service.get_task_by_id(task_id, current_user['id'])
         
@@ -133,11 +139,11 @@ async def get_task(
 async def update_task(
     task_id: str,
     task_data: TaskUpdate,
-    supabase: Client = Depends(get_supabase),
     current_user: dict = Depends(get_current_user)
 ):
-    """Update task"""
+    """Update task. See create_task for why the service-role client is used here."""
     try:
+        supabase = get_supabase_admin()
         task_service = TaskService(supabase)
         
         # Check if task exists and user has access
@@ -170,11 +176,11 @@ async def update_task(
 async def update_task_status(
     task_id: str,
     status_data: TaskStatusUpdate,
-    supabase: Client = Depends(get_supabase),
     current_user: dict = Depends(get_current_user)
 ):
-    """Update task status"""
+    """Update task status. See create_task for why the service-role client is used here."""
     try:
+        supabase = get_supabase_admin()
         task_service = TaskService(supabase)
         
         # Check if task exists and user has access
@@ -212,11 +218,11 @@ async def update_task_status(
 @router.delete("/{task_id}")
 async def delete_task(
     task_id: str,
-    supabase: Client = Depends(get_supabase),
     current_user: dict = Depends(get_current_admin)
 ):
-    """Delete task (admin only)"""
+    """Delete task (admin only). See create_task for why the service-role client is used here."""
     try:
+        supabase = get_supabase_admin()
         task_service = TaskService(supabase)
         result = await task_service.delete_task(task_id, current_user['id'])
         
@@ -238,11 +244,11 @@ async def delete_task(
 
 @router.get("/my-tasks/stats", response_model=TaskStatsResponse)
 async def get_my_task_stats(
-    supabase: Client = Depends(get_supabase),
     current_user: dict = Depends(get_current_user)
 ):
-    """Get task statistics for current user"""
+    """Get task statistics for current user. See create_task for why the service-role client is used here."""
     try:
+        supabase = get_supabase_admin()
         task_service = TaskService(supabase)
         stats = await task_service.get_task_statistics(current_user['id'])
         return TaskStatsResponse(**stats)

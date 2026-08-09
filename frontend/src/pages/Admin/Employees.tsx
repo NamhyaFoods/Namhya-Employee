@@ -88,7 +88,7 @@ const Employees: React.FC = () => {
       header: 'Name',
       render: (value: string, row: User) => (
         <div className="flex items-center">
-          <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-medium text-sm">
+          <div className="w-8 h-8 rounded-full bg-primary-500/15 text-primary-300 flex items-center justify-center font-medium text-sm">
             {value.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
           </div>
           <div className="ml-3">
@@ -117,10 +117,10 @@ const Employees: React.FC = () => {
       key: 'role',
       header: 'Role',
       render: (value: string) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          value === 'admin' ? 'bg-red-100 text-red-700' :
-          value === 'manager' ? 'bg-blue-100 text-blue-700' :
-          'bg-green-100 text-green-700'
+        <span className={`badge ${
+          value === 'admin' ? 'bg-danger/15 text-red-400' :
+          value === 'manager' ? 'bg-primary-500/15 text-primary-300' :
+          'bg-success/15 text-green-400'
         }`}>
           {value.toUpperCase()}
         </span>
@@ -130,8 +130,8 @@ const Employees: React.FC = () => {
       key: 'is_active',
       header: 'Status',
       render: (value: boolean) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          value ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+        <span className={`badge ${
+          value ? 'bg-success/15 text-green-400' : 'bg-danger/15 text-red-400'
         }`}>
           {value ? 'Active' : 'Inactive'}
         </span>

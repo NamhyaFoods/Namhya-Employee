@@ -36,6 +36,23 @@ class SupabaseClient:
                 settings.SUPABASE_SERVICE_KEY
             )
             logger.info("Supabase admin (service role) client initialized successfully")
+            # TEMPORARY DIAGNOSTIC: confirm what role this client is actually
+            # constructed with, right at construction time, before anything
+            # else has a chance to touch it.
+            try:
+                import base64, json as _json
+                _key = settings.SUPABASE_SERVICE_KEY
+                _payload = _key.split('.')[1]
+                _payload += '=' * (-len(_payload) % 4)
+                _decoded = _json.loads(base64.urlsafe_b64decode(_payload))
+                logger.error(f"DEBUG _initialize: SUPABASE_SERVICE_KEY role at construction = {_decoded.get('role')}")
+                _hdr = self._admin_client.postgrest.session.headers.get('Authorization', '')
+                _hdr_payload = _hdr.replace('Bearer ', '').split('.')[1]
+                _hdr_payload += '=' * (-len(_hdr_payload) % 4)
+                _hdr_decoded = _json.loads(base64.urlsafe_b64decode(_hdr_payload))
+                logger.error(f"DEBUG _initialize: admin_client.postgrest header role at construction = {_hdr_decoded.get('role')}")
+            except Exception as diag_e:
+                logger.error(f"DEBUG _initialize: could not decode: {diag_e}")
         except Exception as e:
             logger.error(f"Failed to initialize Supabase admin client: {str(e)}")
             self._admin_client = None

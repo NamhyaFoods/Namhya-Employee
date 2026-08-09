@@ -15,7 +15,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
     if (onClick) {
       onClick()
     } else {
-      navigate(`/tasks/${task.id}`)
+      navigate(`/employee/tasks/${task.id}`)
     }
   }
 

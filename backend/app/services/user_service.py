@@ -24,15 +24,30 @@ class UserService:
             if existing.data:
                 return None
             
-            # Create auth user in Supabase
-            auth_response = self.supabase.auth.sign_up({
+            # Create auth user in Supabase.
+            #
+            # IMPORTANT: use auth.admin.create_user(), not auth.sign_up().
+            # sign_up() establishes a session ON THIS CLIENT for the newly
+            # created user — so any .table() calls made afterward on the
+            # same client silently start running as that brand-new,
+            # unprivileged user instead of the service-role key it was
+            # constructed with. That's what was causing "new row violates
+            # row-level security policy" even after switching this route to
+            # the admin client: the insert below was, by that point, no
+            # longer actually authenticated as service_role.
+            #
+            # auth.admin.create_user() is an admin-only action that doesn't
+            # touch this client's session at all, and as a bonus lets us
+            # mark the email pre-confirmed so no confirmation email is sent
+            # (avoiding Supabase's email rate limit for admin-created
+            # accounts entirely).
+            auth_response = self.supabase.auth.admin.create_user({
                 "email": user_data.email,
                 "password": user_data.password,
-                "options": {
-                    "data": {
-                        "full_name": user_data.full_name,
-                        "role": user_data.role
-                    }
+                "email_confirm": True,
+                "user_metadata": {
+                    "full_name": user_data.full_name,
+                    "role": user_data.role
                 }
             })
             
@@ -82,6 +97,21 @@ class UserService:
     async def get_all_users(self, current_user_id: str, role_filter: Optional[str] = None) -> List[Dict]:
         """Get all users with optional role filter"""
         try:
+            # TEMPORARY DIAGNOSTIC: decode which role's JWT this client is
+            # actually sending on this request, to rule out the client
+            # silently not being the service-role one we think it is.
+            try:
+                import base64, json as _json
+                _headers = self.supabase.postgrest.session.headers
+                _auth_header = _headers.get('Authorization', '')
+                _token = _auth_header.replace('Bearer ', '')
+                _payload = _token.split('.')[1]
+                _payload += '=' * (-len(_payload) % 4)
+                _decoded = _json.loads(base64.urlsafe_b64decode(_payload))
+                logger.error(f"DEBUG get_all_users: request auth role={_decoded.get('role')}")
+            except Exception as diag_e:
+                logger.error(f"DEBUG get_all_users: could not decode auth header: {diag_e}")
+
             query = self.supabase.table('users')\
                 .select('*')\
                 .order('created_at', desc=True)
@@ -90,9 +120,12 @@ class UserService:
                 query = query.eq('role', role_filter)
             
             result = query.execute()
+            logger.error(f"DEBUG get_all_users: result.data={result.data!r}")
             return result.data if result.data else []
         except Exception as e:
+            import traceback
             logger.error(f"Error fetching users: {str(e)}")
+            logger.error(traceback.format_exc())
             return []
 
     async def update_user(self, user_id: str, user_data: UserUpdate, current_user_id: str) -> Optional[Dict]:

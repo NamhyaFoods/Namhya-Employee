@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AdminLayout from '../../components/common/Layout/AdminLayout'
 import Input from '../../components/shared/Forms/Input'
-import Select from '../../components/shared/Forms/Select'
 import { usersApi, CreateEmployeePayload } from '../../api/users'
 import toast from 'react-hot-toast'
 
@@ -51,7 +50,7 @@ const AddEmployee: React.FC = () => {
     <AdminLayout>
       <div className="p-6 max-w-2xl">
         <h1 className="text-2xl font-bold text-gray-900 mb-6">Add Employee</h1>
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-surface rounded-xl shadow-sm p-6 space-y-4">
           <Input
             label="Full Name"
             value={formData.full_name}

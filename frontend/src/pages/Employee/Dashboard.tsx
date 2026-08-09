@@ -54,7 +54,8 @@ const EmployeeDashboard: React.FC = () => {
     <EmployeeLayout>
       <div className="space-y-6">
         {/* Welcome Section */}
-        <div className="bg-gradient-to-r from-primary-500 to-primary-600 rounded-xl p-6 text-white">
+        <div className="bg-gradient-signature rounded-2xl p-6 text-white shadow-glow relative overflow-hidden">
+          <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
           <h1 className="text-2xl font-bold">Welcome back!</h1>
           <p className="mt-2 opacity-90">
             Here's your task and performance overview
@@ -129,21 +130,21 @@ const EmployeeDashboard: React.FC = () => {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <button
             onClick={() => navigate('/employee/tasks')}
-            className="p-4 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
+            className="p-4 bg-primary-500/10 text-primary-300 border border-primary-500/20 rounded-lg hover:bg-primary-500/20 transition-colors"
           >
             <FaTasks className="w-6 h-6 mx-auto mb-2" />
             <span className="font-medium">My Tasks</span>
           </button>
           <button
             onClick={() => navigate('/employee/performance')}
-            className="p-4 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors"
+            className="p-4 bg-success/10 text-green-400 border border-success/20 rounded-lg hover:bg-success/20 transition-colors"
           >
             <FaChartBar className="w-6 h-6 mx-auto mb-2" />
             <span className="font-medium">My Performance</span>
           </button>
           <button
             onClick={() => navigate('/employee/profile')}
-            className="p-4 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors"
+            className="p-4 bg-accent-500/10 text-accent-300 border border-accent-500/20 rounded-lg hover:bg-accent-500/20 transition-colors"
           >
             <FaCheckCircle className="w-6 h-6 mx-auto mb-2" />
             <span className="font-medium">Profile</span>

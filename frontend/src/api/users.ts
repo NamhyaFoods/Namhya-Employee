@@ -16,7 +16,13 @@ export interface CreateEmployeePayload {
 export const usersApi = {
   getAll: async (role?: string): Promise<User[]> => {
     const params = role ? { role } : {}
-    const response = await api.get('/users', { params })
+    // Trailing slash matters here: the backend route is defined as
+    // `/users/` (via `@router.get("/")` under the `/users` prefix). Calling
+    // `/users` without it triggers FastAPI's automatic redirect to add the
+    // slash, and that redirect round-trip was dropping the Authorization
+    // header, causing every employee-list request to fail with 401
+    // regardless of whether the token itself was valid.
+    const response = await api.get('/users/', { params })
     return response.data
   },
 

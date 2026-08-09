@@ -57,12 +57,15 @@ class TaskResponse(TaskBase):
     is_overdue: bool = False
     created_at: datetime
     updated_at: datetime
+    # Present on TaskResponse (not just TaskDetailResponse) because the
+    # list endpoint (`GET /tasks/`, used by the Admin Tasks table) returns
+    # TaskResponse, and that table needs the assignee's name per row.
+    assigned_to_name: Optional[str] = None
     
     class Config:
         from_attributes = True
 
 class TaskDetailResponse(TaskResponse):
-    assigned_to_name: Optional[str] = None
     assigned_by_name: Optional[str] = None
     efficiency_percentage: Optional[float] = None
     timeliness_status: Optional[str] = None

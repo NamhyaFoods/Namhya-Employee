@@ -13,7 +13,27 @@ async def verify_token(token: str, supabase: Client) -> Optional[Dict]:
     try:
         # Verify the token with Supabase (this call is fine on the
         # anon-key client — it's just validating the JWT itself)
+        # TEMPORARY DIAGNOSTIC: check admin client header immediately
+        # before and after this call, to see if it gets mutated by it.
+        try:
+            import base64, json as _json
+            _admin_hdr_before = get_supabase_admin().postgrest.session.headers.get('Authorization', '')
+            _p = _admin_hdr_before.replace('Bearer ', '').split('.')[1]
+            _p += '=' * (-len(_p) % 4)
+            logger.error(f"DEBUG verify_token BEFORE get_user: admin header role = {_json.loads(base64.urlsafe_b64decode(_p)).get('role')}")
+        except Exception as diag_e:
+            logger.error(f"DEBUG verify_token BEFORE: could not decode: {diag_e}")
+
         user = supabase.auth.get_user(token)
+
+        try:
+            import base64, json as _json
+            _admin_hdr_after = get_supabase_admin().postgrest.session.headers.get('Authorization', '')
+            _p = _admin_hdr_after.replace('Bearer ', '').split('.')[1]
+            _p += '=' * (-len(_p) % 4)
+            logger.error(f"DEBUG verify_token AFTER get_user: admin header role = {_json.loads(base64.urlsafe_b64decode(_p)).get('role')}")
+        except Exception as diag_e:
+            logger.error(f"DEBUG verify_token AFTER: could not decode: {diag_e}")
         if user and user.user:
             # Look up the user's profile using the service-role client.
             # We do this with the admin client (not the anon-key client)

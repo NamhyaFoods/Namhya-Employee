@@ -122,7 +122,8 @@ const AdminDashboard: React.FC = () => {
     <AdminLayout>
       <div className="space-y-6">
         {/* Welcome Section */}
-        <div className="bg-gradient-to-r from-primary-500 to-primary-600 rounded-xl p-6 text-white">
+        <div className="bg-gradient-signature rounded-2xl p-6 text-white shadow-glow relative overflow-hidden">
+          <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
           <h1 className="text-2xl font-bold">Welcome to the Dashboard!</h1>
           <p className="mt-2 opacity-90">
             Here's an overview of your organization's performance
@@ -144,8 +145,8 @@ const AdminDashboard: React.FC = () => {
               data={performanceData}
               xKey="name"
               bars={[
-                { key: 'efficiency', color: '#3b82f6' },
-                { key: 'completion', color: '#10b981' },
+                { key: 'efficiency', color: '#3B82F6' },
+                { key: 'completion', color: '#22D3EE' },
               ]}
               height={250}
             />
@@ -163,8 +164,8 @@ const AdminDashboard: React.FC = () => {
               ]}
               xKey="month"
               lines={[
-                { key: 'tasks', color: '#3b82f6' },
-                { key: 'completed', color: '#10b981' },
+                { key: 'tasks', color: '#3B82F6' },
+                { key: 'completed', color: '#22D3EE' },
               ]}
               height={250}
             />

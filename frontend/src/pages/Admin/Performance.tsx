@@ -154,7 +154,7 @@ const Performance: React.FC = () => {
                 className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-center space-x-4">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary-100 text-primary-600 font-medium">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary-500/15 text-primary-300 font-medium">
                     #{index + 1}
                   </div>
                   <div>

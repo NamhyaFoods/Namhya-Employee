@@ -46,6 +46,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setToken(session.access_token)
             localStorage.setItem('session', JSON.stringify({ user, token: session.access_token }))
           }
+        } else if (event === 'TOKEN_REFRESHED' && session) {
+          // Keep the cached copy in sync so anything still reading
+          // localStorage('session') directly doesn't see a stale token.
+          // The axios interceptor itself no longer relies on this cache
+          // (it asks supabase.auth.getSession() directly), but this keeps
+          // state/localStorage consistent for the rest of the app.
+          setToken(session.access_token)
+          setUser((current) => {
+            if (!current) return current
+            localStorage.setItem(
+              'session',
+              JSON.stringify({ user: current, token: session.access_token })
+            )
+            return current
+          })
         } else if (event === 'SIGNED_OUT') {
           setUser(null)
           setToken(null)
