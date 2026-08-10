@@ -36,8 +36,15 @@ const MonthlyReview: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true)
+      // Was calling reviewsApi.getMyReviews(100), which fetches reviews
+      // for the logged-in admin's own user id. Admins don't have
+      // performance_reviews rows themselves (only employees get monthly
+      // reviews), so this page always rendered zero rows regardless of
+      // how many employees had actually been reviewed. getAll() hits the
+      // new admin-only /reviews/ endpoint that returns reviews across
+      // every employee.
       const [reviewsData, usersData] = await Promise.all([
-        reviewsApi.getMyReviews(100),
+        reviewsApi.getAll(100),
         usersApi.getAll(),
       ])
 

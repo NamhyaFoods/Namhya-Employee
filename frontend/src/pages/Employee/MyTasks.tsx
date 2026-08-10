@@ -161,14 +161,7 @@ const MyTasks: React.FC = () => {
                         Complete
                       </button>
                       <button
-                        onClick={() => {
-                          // No dedicated time-log route/page exists yet —
-                          // TimeLogForm.tsx is an empty stub — so this used
-                          // to navigate to a URL with no matching route and
-                          // silently bounce to /login. Routing to the task
-                          // detail page for now instead of a dead link.
-                          navigate(`/employee/tasks/${task.id}`)
-                        }}
+                        onClick={() => navigate(`/employee/tasks/${task.id}`)}
                         className="text-xs px-3 py-1 bg-purple-100 text-purple-700 rounded hover:bg-purple-200"
                       >
                         Log Time

@@ -2,6 +2,18 @@ import { api } from './client'
 import { Review, KPI } from '../types/performance'
 
 export const reviewsApi = {
+  getAll: async (limit: number = 100): Promise<Review[]> => {
+    // Trailing slash matters here: the backend route is defined as
+    // `/reviews/` (via `@router.get("/")` under the `/reviews` prefix).
+    // Calling `/reviews` without it triggers FastAPI's automatic 307
+    // redirect to add the slash, and that redirect round-trip drops the
+    // Authorization header, causing the request to fail with 401
+    // regardless of a valid token (same issue previously fixed for the
+    // tasks, users, and time-logs endpoints).
+    const response = await api.get('/reviews/', { params: { limit } })
+    return response.data
+  },
+
   generate: async (userId: string, reviewMonth?: string): Promise<Review> => {
     const params = reviewMonth ? { review_month: reviewMonth } : {}
     const response = await api.post(`/reviews/generate/${userId}`, null, { params })

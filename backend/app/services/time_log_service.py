@@ -20,6 +20,16 @@ class TimeLogService:
             
             if not log_dict.get('log_date'):
                 log_dict['log_date'] = date.today().isoformat()
+            else:
+                # log_data.dict() leaves log_date as a native datetime.date
+                # object (Pydantic parses the incoming string into one).
+                # Supabase's insert() has to JSON-serialize this dict to
+                # send it as the request body, and a raw `date` object isn't
+                # JSON-serializable - it raised a TypeError here every time,
+                # just previously masked because this endpoint always failed
+                # earlier with "Task not found" (see the get_supabase_admin
+                # fix in time_logs.py) before ever reaching this insert.
+                log_dict['log_date'] = log_dict['log_date'].isoformat()
             
             result = self.supabase.table('time_logs')\
                 .insert(log_dict)\
@@ -75,6 +85,10 @@ class TimeLogService:
                 return None
             
             update_data['updated_at'] = datetime.utcnow().isoformat()
+            if update_data.get('log_date'):
+                # Same JSON-serialization issue as create_time_log - a raw
+                # datetime.date object isn't serializable by Supabase's insert/update.
+                update_data['log_date'] = update_data['log_date'].isoformat()
             
             # Get task_id before update
             existing = self.supabase.table('time_logs')\
@@ -124,7 +138,17 @@ class TimeLogService:
             return False
 
     async def _update_task_actual_hours(self, task_id: str):
-        """Update task's actual hours from time logs"""
+        """Update task's actual hours (and derived progress_percentage) from time logs.
+
+        progress_percentage was never being touched anywhere in this flow -
+        the only writers of it were the admin edit-task form and the (unused)
+        status-update endpoint, so for any task whose progress was being
+        driven by logged hours it just sat at 0 forever, no matter how much
+        time was logged. This mirrors the actual_hours calculation above:
+        progress = hours logged / allocated hours, capped at 100, and it's
+        skipped for tasks already 'completed' or 'cancelled' so it can't
+        knock a finished task's progress back down/up from a stale log edit.
+        """
         try:
             # Sum all time logs for this task
             logs = self.supabase.table('time_logs')\
@@ -134,12 +158,29 @@ class TimeLogService:
             
             total_hours = sum(log.get('hours_spent', 0) for log in logs.data) if logs.data else 0
             
+            update_payload = {
+                'actual_hours': total_hours,
+                'updated_at': datetime.utcnow().isoformat()
+            }
+            
+            # Need allocated_hours (and current status) to derive progress
+            task_result = self.supabase.table('tasks')\
+                .select('allocated_hours, status')\
+                .eq('id', task_id)\
+                .execute()
+            
+            if task_result.data:
+                task = task_result.data[0]
+                allocated_hours = task.get('allocated_hours') or 0
+                status = task.get('status')
+                
+                if status not in ('completed', 'cancelled') and allocated_hours > 0:
+                    progress = round((total_hours / allocated_hours) * 100)
+                    update_payload['progress_percentage'] = max(0, min(progress, 100))
+            
             # Update task
             self.supabase.table('tasks')\
-                .update({
-                    'actual_hours': total_hours,
-                    'updated_at': datetime.utcnow().isoformat()
-                })\
+                .update(update_payload)\
                 .eq('id', task_id)\
                 .execute()
         except Exception as e:

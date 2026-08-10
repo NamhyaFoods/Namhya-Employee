@@ -75,6 +75,8 @@ class TaskStatsResponse(BaseModel):
     total_tasks: int
     completed_tasks: int
     pending_tasks: int
+    in_progress_tasks: int = 0
+    todo_tasks: int = 0
     overdue_tasks: int
     completion_rate: float
     avg_efficiency: float

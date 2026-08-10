@@ -94,7 +94,7 @@ const EmployeeDashboard: React.FC = () => {
           />
           <StatCard
             title="In Progress"
-            value={stats?.in_progress || 0}
+            value={stats?.in_progress_tasks || 0}
             icon={FaClock}
             color="bg-yellow-500"
           />

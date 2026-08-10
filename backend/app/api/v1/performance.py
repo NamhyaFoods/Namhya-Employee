@@ -11,7 +11,16 @@ from app.schemas.performance import (
 from app.services.performance_service import PerformanceService
 from app.services.score_service import ScoreService
 from app.services.review_service import ReviewService
-from app.db.supabase import get_supabase, get_supabase_admin
+from app.db.supabase import get_supabase_admin
+# All endpoints in this file now use the service-role client (bypasses RLS).
+# my-performance, user/{user_id}, efficiency/task/{task_id}, trend/{user_id},
+# and leaderboard were previously injected with get_supabase (the anon-key
+# client), which Row Level Security applies to. That client has no
+# per-request user session attached, so RLS policies saw no authenticated
+# user and silently returned zero rows for every query - which is why
+# efficiency, completion rate, and score all showed up empty/zero. Only
+# /dashboard/admin was already using get_supabase_admin() correctly. See the
+# matching fix and longer explanation in time_logs.py.
 from app.dependencies import get_current_user, get_current_admin
 import logging
 
@@ -20,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 @router.get("/my-performance")
 async def get_my_performance(
-    supabase: Client = Depends(get_supabase),
+    supabase: Client = Depends(get_supabase_admin),
     current_user: dict = Depends(get_current_user)
 ):
     """Get current user's performance metrics"""
@@ -65,7 +74,7 @@ async def get_my_performance(
 @router.get("/user/{user_id}", response_model=PerformanceResponse)
 async def get_user_performance(
     user_id: str,
-    supabase: Client = Depends(get_supabase),
+    supabase: Client = Depends(get_supabase_admin),
     current_user: dict = Depends(get_current_user)
 ):
     """Get performance metrics for a specific user"""
@@ -117,7 +126,7 @@ async def get_user_performance(
 @router.get("/efficiency/task/{task_id}")
 async def get_task_efficiency(
     task_id: str,
-    supabase: Client = Depends(get_supabase),
+    supabase: Client = Depends(get_supabase_admin),
     current_user: dict = Depends(get_current_user)
 ):
     """Get efficiency for a specific task"""
@@ -145,7 +154,7 @@ async def get_task_efficiency(
 async def get_performance_trend(
     user_id: str,
     months: int = Query(6, description="Number of months to show"),
-    supabase: Client = Depends(get_supabase),
+    supabase: Client = Depends(get_supabase_admin),
     current_user: dict = Depends(get_current_user)
 ):
     """Get performance trend for a user"""
@@ -284,7 +293,7 @@ async def calculate_score(
 @router.get("/leaderboard")
 async def get_performance_leaderboard(
     limit: int = Query(10, description="Number of top performers"),
-    supabase: Client = Depends(get_supabase),
+    supabase: Client = Depends(get_supabase_admin),
     current_user: dict = Depends(get_current_admin)
 ):
     """Get performance leaderboard (admin only)"""

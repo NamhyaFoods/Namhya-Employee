@@ -24,7 +24,14 @@ export interface TimeLogCreate {
 
 export const timeLogsApi = {
   create: async (data: TimeLogCreate): Promise<TimeLog> => {
-    const response = await api.post('/time-logs', data)
+    // Trailing slash matters here: the backend route is defined as
+    // `/time-logs/` (via `@router.post("/")` under the `/time-logs`
+    // prefix). Calling `/time-logs` without it triggers FastAPI's
+    // automatic 307 redirect to add the slash, and that redirect
+    // round-trip drops the Authorization header, causing the request to
+    // fail with 401 regardless of a valid token (same issue previously
+    // fixed for the tasks and users list endpoints).
+    const response = await api.post('/time-logs/', data)
     return response.data
   },
 

@@ -124,9 +124,16 @@ class TaskService:
             
             update_data['updated_at'] = datetime.utcnow().isoformat()
             
-            # If task is being completed, set completed_at
+            # If task is being completed, set completed_at, and force
+            # progress to 100 unless the caller explicitly sent a
+            # progress_percentage of their own in this same request.
+            # Without this, "progress_percentage" just stays whatever it
+            # was before (usually 0, since nothing else in the app ever
+            # writes to it) even though the task shows as COMPLETED.
             if task_data.status == 'completed':
                 update_data['completed_at'] = datetime.utcnow().isoformat()
+                if 'progress_percentage' not in update_data:
+                    update_data['progress_percentage'] = 100
             
             result = self.supabase.table('tasks')\
                 .update(update_data)\
@@ -151,6 +158,12 @@ class TaskService:
             
             if status == 'completed':
                 update_data['completed_at'] = datetime.utcnow().isoformat()
+                # Same reasoning as update_task: the "Complete" button on
+                # MyTasks calls this endpoint with no progress argument at
+                # all, so without this, progress_percentage is simply never
+                # touched and stays at 0 forever on a COMPLETED task.
+                if progress is None:
+                    update_data['progress_percentage'] = 100
             elif status != 'completed':
                 update_data['completed_at'] = None
             

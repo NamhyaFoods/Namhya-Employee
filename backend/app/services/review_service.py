@@ -29,7 +29,19 @@ class ReviewService:
             if existing.data:
                 return existing.data[0]
             
-            # Get tasks for the month
+            # Get tasks for the month. This used to filter on `created_at`
+            # falling inside the review month, which is wrong: a task
+            # created in July but due/completed in August never showed up
+            # in August's review at all, even though the employee did the
+            # work in August. It also meant that as soon as the calendar
+            # rolled over to a new month, every task assigned before the
+            # 1st vanished from that employee's review until they got a
+            # brand new task, so "Generate Reviews" would come back with
+            # 0 for anyone who hadn't been assigned something fresh this
+            # month - which is what was actually happening. Filtering on
+            # due_date (when the work was expected to land) instead of
+            # created_at (when the row happened to be inserted) is the
+            # correct window for a monthly performance review.
             start_date = review_month
             end_date = review_month + timedelta(days=32)
             end_date = end_date.replace(day=1) - timedelta(days=1)
@@ -37,8 +49,8 @@ class ReviewService:
             tasks = self.supabase.table('tasks')\
                 .select('*')\
                 .eq('assigned_to', user_id)\
-                .gte('created_at', start_date.isoformat())\
-                .lt('created_at', (end_date + timedelta(days=1)).isoformat())\
+                .gte('due_date', start_date.isoformat())\
+                .lte('due_date', end_date.isoformat())\
                 .execute()
             
             if not tasks.data:
@@ -180,6 +192,36 @@ class ReviewService:
             return result.data if result.data else []
         except Exception as e:
             logger.error(f"Error getting user reviews: {str(e)}")
+            return []
+
+    async def get_all_reviews(self, limit: int = 100) -> List[Dict]:
+        """Get reviews across every employee (admin only).
+
+        The Admin Monthly Reviews page used to call get_user_reviews with
+        the logged-in admin's own id (there was no "all reviews" endpoint
+        at all), which returns an empty list since admins don't have
+        performance_reviews rows themselves - the page always showed zero
+        reviews regardless of how many employees had actually been
+        reviewed. This joins in each reviewee's full_name the same way
+        task_service embeds assignee names, so the table doesn't just show
+        raw user_id values.
+        """
+        try:
+            result = self.supabase.table('performance_reviews')\
+                .select('*, reviewed_user:users!user_id(full_name)')\
+                .order('review_month', desc=True)\
+                .limit(limit)\
+                .execute()
+
+            reviews = result.data if result.data else []
+            for review in reviews:
+                reviewed_user = review.pop('reviewed_user', None)
+                if reviewed_user:
+                    review['full_name'] = reviewed_user.get('full_name')
+
+            return reviews
+        except Exception as e:
+            logger.error(f"Error getting all reviews: {str(e)}")
             return []
 
     async def update_review(self, review_id: str, review_data: Dict, reviewer_id: str) -> Optional[Dict]:

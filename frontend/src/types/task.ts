@@ -55,6 +55,8 @@ export interface TaskStats {
   total_tasks: number
   completed_tasks: number
   pending_tasks: number
+  in_progress_tasks: number
+  todo_tasks: number
   overdue_tasks: number
   completion_rate: number
   avg_efficiency: number
