@@ -7,7 +7,6 @@ import BarChart from '../../components/shared/Charts/BarChart'
 import LineChart from '../../components/shared/Charts/LineChart'
 import Spinner from '../../components/common/Loading/Spinner'
 import { performanceApi } from '../../api/performance'
-import { usersApi } from '../../api/users'
 import { FaChartBar, FaUserCheck, FaAward, FaArrowUp } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 
@@ -15,6 +14,7 @@ const Performance: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [leaderboard, setLeaderboard] = useState<any[]>([])
   const [performanceData, setPerformanceData] = useState<any[]>([])
+  const [trendData, setTrendData] = useState<any[]>([])
   const [stats, setStats] = useState({
     avgScore: 0,
     topPerformer: '',
@@ -29,34 +29,75 @@ const Performance: React.FC = () => {
   const fetchPerformanceData = async () => {
     try {
       setLoading(true)
-      const [leaderboardData, users] = await Promise.all([
+      // getAdminDashboard() gives us avg_work_score_last_month, which is the
+      // real baseline for the "Improvement vs last month" stat. usersApi is
+      // no longer needed here - the bar chart now plots the leaderboard
+      // (real, review-backed scores) instead of a random score per employee.
+      const [leaderboardData, adminStats] = await Promise.all([
         performanceApi.getLeaderboard(10),
-        usersApi.getAll(),
+        performanceApi.getAdminDashboard(),
       ])
 
       setLeaderboard(leaderboardData)
 
-      const scores = leaderboardData.map((p: any) => p.score)
-      const avgScore = scores.reduce((a: number, b: number) => a + b, 0) / scores.length || 0
+      const scores = leaderboardData.map((p: any) => p.score || 0)
+      const avgScore = scores.length ? scores.reduce((a: number, b: number) => a + b, 0) / scores.length : 0
       const topPerformer = leaderboardData.length > 0 ? leaderboardData[0].full_name : 'N/A'
+
+      // Real improvement vs last month: compare this month's average score
+      // (from the leaderboard) against avg_work_score_last_month from the
+      // admin dashboard view, instead of the hardcoded 8.5 placeholder.
+      const lastMonthScore = adminStats?.avg_work_score_last_month || 0
+      const improvement = lastMonthScore > 0
+        ? Math.round(((avgScore - lastMonthScore) / lastMonthScore) * 1000) / 10
+        : 0
 
       setStats({
         avgScore: Math.round(avgScore * 10) / 10,
         topPerformer,
         totalReviews: leaderboardData.length,
-        improvement: 8.5,
+        improvement,
       })
 
-      const chartData = users
-        .filter(u => u.role === 'employee')
-        .slice(0, 15)
-        .map(u => ({
-          name: u.full_name,
-          score: Math.floor(Math.random() * 30 + 20) / 10,
-          efficiency: Math.floor(Math.random() * 40 + 60),
-          completion: Math.floor(Math.random() * 30 + 70),
-        }))
+      // Employee Scores chart now uses the actual leaderboard entries
+      // (real score/efficiency/completion from performance_reviews) rather
+      // than Math.random() values keyed off the full user list.
+      const chartData = leaderboardData.map((p: any) => ({
+        name: p.full_name,
+        score: p.score || 0,
+        efficiency: Math.round(p.avg_efficiency || 0),
+        completion: Math.round(p.completion_rate || 0),
+      }))
       setPerformanceData(chartData)
+
+      // Performance Trends: pull each leaderboard employee's real monthly
+      // trend and average them together per month, instead of a hardcoded
+      // Jan-Jun fake line. Falls back to an empty array (handled in the
+      // render below) if there isn't enough review history yet.
+      const trendResults = await Promise.all(
+        leaderboardData.map((p: any) =>
+          performanceApi.getTrend(p.user_id, 6).catch(() => [])
+        )
+      )
+
+      const byMonth: Record<string, { scoreSum: number; effSum: number; count: number }> = {}
+      trendResults.flat().forEach((entry: any) => {
+        if (!entry?.review_month) return
+        const key = entry.review_month
+        if (!byMonth[key]) byMonth[key] = { scoreSum: 0, effSum: 0, count: 0 }
+        byMonth[key].scoreSum += entry.final_work_score || 0
+        byMonth[key].effSum += entry.avg_efficiency || 0
+        byMonth[key].count += 1
+      })
+
+      const trend = Object.entries(byMonth)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([month, agg]) => ({
+          month: new Date(month + 'T00:00:00').toLocaleDateString('en-US', { month: 'short' }),
+          score: Math.round((agg.scoreSum / agg.count) * 100) / 100,
+          efficiency: Math.round(agg.effSum / agg.count),
+        }))
+      setTrendData(trend)
     } catch (error) {
       toast.error('Failed to load performance data')
     } finally {
@@ -104,7 +145,7 @@ const Performance: React.FC = () => {
           />
           <StatCard
             title="Improvement"
-            value={`${stats.improvement}%`}
+            value={`${stats.improvement > 0 ? '+' : ''}${stats.improvement}%`}
             icon={FaArrowUp}
             color="bg-purple-500"
             subtitle="vs last month"
@@ -126,22 +167,22 @@ const Performance: React.FC = () => {
           </div>
           <div className="card">
             <h3 className="text-lg font-semibold mb-4">Performance Trends</h3>
-            <LineChart
-              data={[
-                { month: 'Jan', score: 3.2, efficiency: 65 },
-                { month: 'Feb', score: 3.5, efficiency: 68 },
-                { month: 'Mar', score: 3.8, efficiency: 72 },
-                { month: 'Apr', score: 4.0, efficiency: 75 },
-                { month: 'May', score: 4.2, efficiency: 78 },
-                { month: 'Jun', score: 4.5, efficiency: 82 },
-              ]}
-              xKey="month"
-              lines={[
-                { key: 'score', color: '#3b82f6' },
-                { key: 'efficiency', color: '#10b981' },
-              ]}
-              height={300}
-            />
+            {trendData.length > 0 ? (
+              <LineChart
+                data={trendData}
+                xKey="month"
+                lines={[
+                  { key: 'score', color: '#3b82f6' },
+                  { key: 'efficiency', color: '#10b981' },
+                ]}
+                height={300}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-[300px] text-sm text-gray-500 text-center px-6">
+                Not enough review history yet to chart a trend. Trends appear once
+                employees have performance reviews across more than one month.
+              </div>
+            )}
           </div>
         </div>
 
