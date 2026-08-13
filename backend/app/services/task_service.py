@@ -118,7 +118,14 @@ class TaskService:
     async def update_task(self, task_id: str, task_data: TaskUpdate, user_id: str) -> Optional[Dict]:
         """Update task information"""
         try:
-            update_data = task_data.dict(exclude_unset=True)
+            # Use mode='json' so date fields (start_date, due_date) are
+            # serialized to ISO strings rather than left as raw Python
+            # date objects - same issue as create_task: the Supabase client
+            # can't JSON-encode a date object, which was causing every
+            # update with a due_date to throw, get swallowed here, and
+            # return None (surfacing upstream as a confusing
+            # "argument after ** must be a mapping, not NoneType" error).
+            update_data = task_data.model_dump(mode='json', exclude_unset=True)
             if not update_data:
                 return None
             
@@ -142,8 +149,12 @@ class TaskService:
             
             return result.data[0] if result.data else None
         except Exception as e:
+            # Re-raise (rather than swallowing to None) so the router's
+            # error handler surfaces the actual failure - e.g. a bad
+            # column value or JSON-serialization issue - instead of it
+            # turning into a confusing "NoneType" error further up.
             logger.error(f"Error updating task: {str(e)}")
-            return None
+            raise
 
     async def update_task_status(self, task_id: str, status: TaskStatus, progress: Optional[int] = None, user_id: str = None) -> Optional[Dict]:
         """Update task status"""
@@ -196,7 +207,15 @@ class TaskService:
             
             total = len(tasks)
             completed = len([t for t in tasks if t.get('status') == 'completed'])
-            in_progress = len([t for t in tasks if t.get('status') == 'in_progress'])
+            # "In Progress" on the dashboard is meant to represent active,
+            # not-yet-done work. A task sitting in 'review' has hours logged
+            # and isn't finished either - it's just as "in progress" from
+            # the employee's point of view - so it's counted here too.
+            # Previously this only matched the literal status 'in_progress',
+            # which meant any task that had moved to 'review' silently
+            # dropped out of this count even though it was clearly still
+            # active (e.g. 15/50h logged, not done).
+            in_progress = len([t for t in tasks if t.get('status') in ('in_progress', 'review')])
             todo = len([t for t in tasks if t.get('status') == 'todo'])
             pending = in_progress + todo
             overdue = len([t for t in tasks if t.get('is_overdue') == True and t.get('status') != 'completed'])

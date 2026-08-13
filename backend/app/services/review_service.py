@@ -19,15 +19,14 @@ class ReviewService:
             if not review_month:
                 review_month = date.today().replace(day=1)
             
-            # Check if review already exists
+            # Check if a review already exists for this user/month
             existing = self.supabase.table('performance_reviews')\
                 .select('*')\
                 .eq('user_id', user_id)\
                 .eq('review_month', review_month.isoformat())\
                 .execute()
             
-            if existing.data:
-                return existing.data[0]
+            existing_review = existing.data[0] if existing.data else None
             
             # Get tasks for the month. This used to filter on `created_at`
             # falling inside the review month, which is wrong: a task
@@ -95,7 +94,14 @@ class ReviewService:
                 quality_score
             )
             
-            # Create review
+            # Create or update review. Previously, once a review row existed
+            # for a user/month it was returned as-is on every later call -
+            # so "Generate Reviews" after that point silently did nothing
+            # and the score stayed frozen at whatever it was the first time,
+            # no matter how much task/hours/completion data changed
+            # afterward. Now it always recomputes from current task data
+            # and writes the result - inserting a new row the first time,
+            # updating the existing one on every call after that.
             review_data = {
                 'user_id': user_id,
                 'review_month': review_month.isoformat(),
@@ -110,13 +116,19 @@ class ReviewService:
                 'completion_weight_percent': self.score_service.completion_weight,
                 'timeliness_weight_percent': self.score_service.timeliness_weight,
                 'quality_weight_percent': self.score_service.quality_weight,
-                'created_at': datetime.utcnow().isoformat(),
                 'updated_at': datetime.utcnow().isoformat()
             }
             
-            result = self.supabase.table('performance_reviews')\
-                .insert(review_data)\
-                .execute()
+            if existing_review:
+                result = self.supabase.table('performance_reviews')\
+                    .update(review_data)\
+                    .eq('id', existing_review['id'])\
+                    .execute()
+            else:
+                review_data['created_at'] = datetime.utcnow().isoformat()
+                result = self.supabase.table('performance_reviews')\
+                    .insert(review_data)\
+                    .execute()
             
             return result.data[0] if result.data else None
         except Exception as e:

@@ -162,6 +162,17 @@ async def update_task(
             )
         
         updated_task = await task_service.update_task(task_id, task_data, current_user['id'])
+        if not updated_task:
+            # Either the request contained no actual field changes, or the
+            # update ran but the row wasn't found/returned. Re-fetch and
+            # return the current task instead of crashing on
+            # TaskResponse(**None).
+            updated_task = await task_service.get_task_by_id(task_id, current_user['id'])
+            if not updated_task:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Task not found"
+                )
         return TaskResponse(**updated_task)
     except HTTPException:
         raise

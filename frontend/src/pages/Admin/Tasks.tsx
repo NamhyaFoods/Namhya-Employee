@@ -48,7 +48,7 @@ const Tasks: React.FC = () => {
       // Calculate stats
       const total = data.length
       const completed = data.filter(t => t.status === 'completed').length
-      const inProgress = data.filter(t => t.status === 'in_progress').length
+      const inProgress = data.filter(t => t.status === 'in_progress' || t.status === 'review').length
       const overdue = data.filter(t => t.is_overdue).length
       setStats({ total, completed, inProgress, overdue })
     } catch (error) {

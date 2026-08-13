@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import AdminLayout from '../../components/common/Layout/AdminLayout'
 import Input from '../../components/shared/Forms/Input'
 import TextArea from '../../components/shared/Forms/TextArea'
@@ -11,7 +11,14 @@ import toast from 'react-hot-toast'
 
 const CreateTask: React.FC = () => {
   const navigate = useNavigate()
+  // When this page is reached via /admin/tasks/:id or /admin/tasks/:id/edit
+  // (e.g. by clicking a row in the Recent Tasks / Tasks table), `id` will be
+  // set and we load + edit that task instead of showing a blank create form.
+  const { id } = useParams<{ id: string }>()
+  const isEditMode = Boolean(id)
+
   const [loading, setLoading] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(isEditMode)
   const [employees, setEmployees] = useState<User[]>([])
   const [formData, setFormData] = useState({
     title: '',
@@ -19,6 +26,8 @@ const CreateTask: React.FC = () => {
     assigned_to: '',
     allocated_hours: 1,
     priority: 'medium',
+    status: 'todo',
+    progress_percentage: 0,
     due_date: '',
   })
 
@@ -39,24 +48,74 @@ const CreateTask: React.FC = () => {
     fetchEmployees()
   }, [])
 
+  useEffect(() => {
+    if (!id) return
+    const fetchTask = async () => {
+      setInitialLoading(true)
+      try {
+        const task = await tasksApi.getById(id)
+        setFormData({
+          title: task.title || '',
+          description: task.description || '',
+          assigned_to: task.assigned_to || '',
+          allocated_hours: task.allocated_hours ?? 1,
+          priority: task.priority || 'medium',
+          status: task.status || 'todo',
+          progress_percentage: task.progress_percentage ?? 0,
+          due_date: task.due_date ? task.due_date.slice(0, 10) : '',
+        })
+      } catch (error: any) {
+        toast.error(error?.response?.data?.detail || 'Failed to load task')
+        navigate('/admin/tasks')
+      } finally {
+        setInitialLoading(false)
+      }
+    }
+    fetchTask()
+  }, [id, navigate])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
-      await tasksApi.create(formData as any)
-      toast.success('Task created')
+      if (isEditMode && id) {
+        const { title, description, assigned_to, ...updatable } = formData
+        await tasksApi.update(id, {
+          title,
+          description,
+          ...updatable,
+        } as any)
+        toast.success('Task updated')
+      } else {
+        const { status, progress_percentage, ...createFields } = formData
+        await tasksApi.create(createFields as any)
+        toast.success('Task created')
+      }
       navigate('/admin/tasks')
     } catch (error: any) {
-      toast.error(error?.response?.data?.detail || 'Failed to create task')
+      toast.error(
+        error?.response?.data?.detail ||
+          (isEditMode ? 'Failed to update task' : 'Failed to create task')
+      )
     } finally {
       setLoading(false)
     }
   }
 
+  if (initialLoading) {
+    return (
+      <AdminLayout>
+        <div className="p-6 max-w-2xl text-gray-400">Loading task...</div>
+      </AdminLayout>
+    )
+  }
+
   return (
     <AdminLayout>
       <div className="p-6 max-w-2xl">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Create Task</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-6">
+          {isEditMode ? 'Edit Task' : 'Create Task'}
+        </h1>
         <form onSubmit={handleSubmit} className="bg-surface rounded-xl shadow-sm p-6 space-y-4">
           <Input
             label="Title"
@@ -90,6 +149,44 @@ const CreateTask: React.FC = () => {
             }
             required
           />
+          <Select
+            label="Priority"
+            value={formData.priority}
+            onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+            options={[
+              { value: 'low', label: 'Low' },
+              { value: 'medium', label: 'Medium' },
+              { value: 'high', label: 'High' },
+              { value: 'urgent', label: 'Urgent' },
+            ]}
+          />
+          {isEditMode && (
+            <>
+              <Select
+                label="Status"
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                options={[
+                  { value: 'todo', label: 'To Do' },
+                  { value: 'in_progress', label: 'In Progress' },
+                  { value: 'review', label: 'Review' },
+                  { value: 'completed', label: 'Completed' },
+                  { value: 'on_hold', label: 'On Hold' },
+                  { value: 'cancelled', label: 'Cancelled' },
+                ]}
+              />
+              <Input
+                label="Progress (%)"
+                type="number"
+                min={0}
+                max={100}
+                value={formData.progress_percentage}
+                onChange={(e) =>
+                  setFormData({ ...formData, progress_percentage: Number(e.target.value) })
+                }
+              />
+            </>
+          )}
           <Input
             label="Due Date"
             type="date"
@@ -97,7 +194,13 @@ const CreateTask: React.FC = () => {
             onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
           />
           <button type="submit" disabled={loading} className="btn-primary">
-            {loading ? 'Creating...' : 'Create Task'}
+            {loading
+              ? isEditMode
+                ? 'Saving...'
+                : 'Creating...'
+              : isEditMode
+              ? 'Save Changes'
+              : 'Create Task'}
           </button>
         </form>
       </div>

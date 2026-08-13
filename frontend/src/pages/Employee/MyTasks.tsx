@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import EmployeeLayout from '../../components/common/Layout/EmployeeLayout'
 import TaskCard from '../../components/common/Cards/TaskCard'
 import Input from '../../components/shared/Forms/Input'
-import Select from '../../components/shared/Forms/Select'
 import Spinner from '../../components/common/Loading/Spinner'
 import { tasksApi } from '../../api/tasks'
 import { Task } from '../../types/task'
@@ -72,10 +71,13 @@ const MyTasks: React.FC = () => {
     }
   }
 
-  const statusOptions = [
-    { value: '', label: 'All Statuses' },
+  const statusTabs = [
+    { value: '', label: 'All' },
     ...TASK_STATUSES.map(s => ({ value: s.value, label: s.label })),
   ]
+
+  const getStatusCount = (value: string) =>
+    value ? tasks.filter((t) => t.status === value).length : tasks.length
 
   if (loading) {
     return (
@@ -97,7 +99,7 @@ const MyTasks: React.FC = () => {
         </div>
 
         {/* Filters */}
-        <div className="card">
+        <div className="card space-y-4">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <Input
@@ -107,18 +109,29 @@ const MyTasks: React.FC = () => {
                 icon={<FaSearch />}
               />
             </div>
-            <div className="w-full sm:w-48">
-              <Select
-                options={statusOptions}
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-              />
-            </div>
             <div className="flex items-center">
               <span className="text-sm text-gray-500">
                 {filteredTasks.length} tasks found
               </span>
             </div>
+          </div>
+
+          {/* Status tabs */}
+          <div className="flex flex-wrap gap-2">
+            {statusTabs.map((tab) => (
+              <button
+                key={tab.value || 'all'}
+                onClick={() => setStatusFilter(tab.value)}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  statusFilter === tab.value
+                    ? 'bg-primary-500 text-white'
+                    : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                {tab.label}
+                <span className="ml-1.5 opacity-70">{getStatusCount(tab.value)}</span>
+              </button>
+            ))}
           </div>
         </div>
 
