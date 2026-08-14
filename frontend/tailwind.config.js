@@ -32,27 +32,31 @@ export default {
         success: '#22C55E',
         warning: '#F59E0B',
         danger: '#EF4444',
-        // "gray" is remapped end-to-end for the dark theme: the numbering
-        // (50 = lightest role, 900 = darkest role) is preserved so every
-        // existing bg-gray-50 / text-gray-900 / border-gray-200 usage in
-        // the app repolarizes automatically without touching each file.
+        // "gray" is remapped end-to-end so the same role numbering (50 =
+        // lightest role, 900 = darkest role) works for both themes — every
+        // existing bg-gray-50 / text-gray-900 / border-gray-200 usage in the
+        // app repolarizes automatically without touching each file. Values
+        // come from CSS variables (src/styles/variables.css) that ThemeContext
+        // swaps by toggling the `light` class on <html>; <alpha-value> lets
+        // Tailwind still apply opacity modifiers like bg-gray-50/80.
         gray: {
-          50: '#0A0F1D',   // page background
-          100: '#111A2E',  // subtle surface / hover fill
-          200: '#1E293F',  // hairline borders, dividers
-          300: '#2C3B57',  // stronger borders, disabled fills
-          400: '#64748B',  // muted icons, placeholders
-          500: '#8B98AC',  // secondary text
-          600: '#AEB9CC',  // body text
-          700: '#CBD5E1',  // secondary headings
-          800: '#E2E8F0',  // headings
-          900: '#F8FAFC',  // primary text, near-white
+          50: 'rgb(var(--color-gray-50) / <alpha-value>)',   // page background
+          100: 'rgb(var(--color-gray-100) / <alpha-value>)', // subtle surface / hover fill
+          200: 'rgb(var(--color-gray-200) / <alpha-value>)', // hairline borders, dividers
+          300: 'rgb(var(--color-gray-300) / <alpha-value>)', // stronger borders, disabled fills
+          400: 'rgb(var(--color-gray-400) / <alpha-value>)', // muted icons, placeholders
+          500: 'rgb(var(--color-gray-500) / <alpha-value>)', // secondary text
+          600: 'rgb(var(--color-gray-600) / <alpha-value>)', // body text
+          700: 'rgb(var(--color-gray-700) / <alpha-value>)', // secondary headings
+          800: 'rgb(var(--color-gray-800) / <alpha-value>)', // headings
+          900: 'rgb(var(--color-gray-900) / <alpha-value>)', // primary text
         },
-        // Card / nav / table surfaces — used in place of bg-white.
+        // Card / nav / table surfaces — used in place of bg-white. Also
+        // theme-variable-driven; see gray above.
         surface: {
-          DEFAULT: '#101A2E',
-          elevated: '#16223B',
-          hover: '#1B2842',
+          DEFAULT: 'rgb(var(--color-surface) / <alpha-value>)',
+          elevated: 'rgb(var(--color-surface-elevated) / <alpha-value>)',
+          hover: 'rgb(var(--color-surface-hover) / <alpha-value>)',
         },
       },
       fontFamily: {

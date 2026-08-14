@@ -17,6 +17,15 @@
     />
   </head>
   <body>
+    <script>
+      // Applied synchronously, before React mounts and before first paint,
+      // so switching to light mode doesn't flash dark for a frame on reload.
+      // Kept in sync with the default in ThemeContext.tsx (dark).
+      (function () {
+        var saved = localStorage.getItem('theme');
+        document.documentElement.className = saved === 'light' ? 'light' : 'dark';
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/index.tsx"></script>
   </body>

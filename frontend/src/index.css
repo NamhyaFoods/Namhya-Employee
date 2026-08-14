@@ -1,13 +1,15 @@
+@import './styles/variables.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   html {
-    /* Dark is the primary theme for this dashboard; the gray scale is
-       already remapped in tailwind.config.js, this just sets the page
-       background before React/Tailwind utility classes paint over it. */
-    background-color: #0A0F1D;
+    /* Tracks the active theme (the `.light` class swaps the variables in
+       variables.css) so this no longer hardcodes dark's background —
+       light mode gets its own background instead of staying dark. */
+    background-color: rgb(var(--color-gray-50));
   }
 
   body {
