@@ -15,4 +15,8 @@ passlib[bcrypt]
 python-dateutil
 pandas
 openpyxl
+<<<<<<< HEAD
 httpx
+=======
+httpx
+>>>>>>> 6beb001e3f6bfbf10a02f988cec33395ac1801c5
