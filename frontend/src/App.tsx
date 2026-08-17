@@ -6,6 +6,8 @@ import ProtectedRoute from './components/auth/ProtectedRoute'
 
 // Pages
 import Login from './pages/Login'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 import AdminDashboard from './pages/Admin/Dashboard'
 import AdminEmployees from './pages/Admin/Employees'
 import AdminAddEmployee from './pages/Admin/AddEmployee'
@@ -56,6 +58,8 @@ function App() {
             <Routes>
               {/* Public Routes */}
               <Route path="/login" element={<Login />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/" element={<Navigate to="/login" />} />
 
               {/* Admin Routes */}

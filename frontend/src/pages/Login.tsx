@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 const Login: React.FC = () => {
@@ -93,9 +93,9 @@ const Login: React.FC = () => {
             </div>
 
             <div className="text-sm">
-              <a href="#" className="font-medium text-primary-600 hover:text-primary-500">
+              <Link to="/forgot-password" className="font-medium text-primary-600 hover:text-primary-500">
                 Forgot password?
-              </a>
+              </Link>
             </div>
           </div>
 
@@ -117,10 +117,6 @@ const Login: React.FC = () => {
             )}
           </button>
 
-          <div className="text-center text-sm text-gray-500">
-            <p>Demo credentials:</p>
-            <p className="font-mono text-xs">admin@company.com / Admin123!</p>
-          </div>
         </form>
       </div>
     </div>

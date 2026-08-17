@@ -131,6 +131,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }
 
+  const resetPasswordForEmail = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      })
+
+      if (error) throw error
+
+      toast.success('Password reset email sent! Check your inbox.')
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to send reset email')
+      throw error
+    }
+  }
+
+  const updatePassword = async (newPassword: string) => {
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+
+      if (error) throw error
+
+      toast.success('Password updated successfully! 🎉')
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update password')
+      throw error
+    }
+  }
+
   const hasRole = (roles: string[]) => {
     if (!user) return false
     return roles.includes(user.role)
@@ -142,6 +170,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loading,
     login,
     logout,
+    resetPasswordForEmail,
+    updatePassword,
     hasRole,
     isAuthenticated: !!user,
     isAdmin: user?.role === 'admin' || user?.role === 'manager',

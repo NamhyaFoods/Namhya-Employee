@@ -21,6 +21,8 @@ export interface AuthContextType {
   loading: boolean
   login: (email: string, password: string) => Promise<User | null>
   logout: () => Promise<void>
+  resetPasswordForEmail: (email: string) => Promise<void>
+  updatePassword: (newPassword: string) => Promise<void>
   hasRole: (roles: string[]) => boolean
   isAuthenticated: boolean
   isAdmin: boolean
