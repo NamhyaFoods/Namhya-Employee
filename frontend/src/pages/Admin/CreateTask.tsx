@@ -147,6 +147,7 @@ const CreateTask: React.FC = () => {
             onChange={(e) =>
               setFormData({ ...formData, allocated_hours: Number(e.target.value) })
             }
+            helper="Enter the difficulty estimate for this task alone. If the employee already has other active tasks, the system will automatically scale everyone's hours down to fit their real capacity (9 hrs/day, Mon-Sat)."
             required
           />
           <Select
