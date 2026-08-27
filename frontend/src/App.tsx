@@ -12,6 +12,7 @@ import AdminDashboard from './pages/Admin/Dashboard'
 import AdminEmployees from './pages/Admin/Employees'
 import AdminAddEmployee from './pages/Admin/AddEmployee'
 import AdminEmployeeProfile from './pages/Admin/EmployeeProfile'
+import AdminEditEmployee from './pages/Admin/EditEmployee'
 import AdminBulkImport from './pages/Admin/BulkImport'
 import AdminTasks from './pages/Admin/Tasks'
 import AdminCreateTask from './pages/Admin/CreateTask'
@@ -100,6 +101,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['admin', 'manager']}>
                     <AdminEmployeeProfile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/employees/:id/edit"
+                element={
+                  <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                    <AdminEditEmployee />
                   </ProtectedRoute>
                 }
               />
