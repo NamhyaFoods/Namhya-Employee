@@ -153,6 +153,12 @@ const Employees: React.FC = () => {
           >
             View
           </button>
+          <button
+            onClick={() => navigate(`/admin/employees/${value}/edit`)}
+            className="text-primary-400 hover:text-primary-300 text-sm"
+          >
+            Edit
+          </button>
           {row.is_active ? (
             <button
               onClick={() => handleDelete(value)}
