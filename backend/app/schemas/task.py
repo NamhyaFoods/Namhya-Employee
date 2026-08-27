@@ -70,6 +70,11 @@ class TaskDetailResponse(TaskResponse):
     efficiency_percentage: Optional[float] = None
     timeliness_status: Optional[str] = None
     time_logs: Optional[List] = []
+    # The admin's original, un-scaled estimate for this task, before it
+    # was proportionally adjusted for the employee's concurrent workload.
+    # allocated_hours (on TaskResponse/TaskBase) is the effective, scaled
+    # value actually used for efficiency and displayed on the task list.
+    allocated_hours_raw: Optional[float] = None
 
 class TaskStatsResponse(BaseModel):
     total_tasks: int
