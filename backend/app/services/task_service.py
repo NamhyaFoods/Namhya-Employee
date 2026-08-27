@@ -1,12 +1,24 @@
 from supabase import Client
 from typing import Optional, Dict, List, Any
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import logging
 from app.schemas.task import TaskCreate, TaskUpdate, TaskStatus
 
 logger = logging.getLogger(__name__)
 
 class TaskService:
+    # Tasks in these statuses count toward an employee's active workload.
+    # 'on_hold'/'cancelled'/'completed' free up capacity for the rest.
+    ACTIVE_STATUSES = ('todo', 'in_progress', 'review')
+
+    # Workday capacity: 10 AM - 7 PM.
+    WORKDAY_HOURS = 9
+
+    # When none of an employee's active tasks have a due_date, there's no
+    # natural end of the allocation window - fall back to a 7-day horizon
+    # rather than treating capacity as infinite.
+    DEFAULT_WINDOW_DAYS = 7
+
     def __init__(self, supabase: Client):
         self.supabase = supabase
 
@@ -22,6 +34,11 @@ class TaskService:
             task_dict['status'] = 'todo'
             task_dict['progress_percentage'] = 0
             task_dict['actual_hours'] = 0
+            # allocated_hours as typed by the admin is the *raw* difficulty
+            # estimate. allocated_hours itself gets overwritten below by
+            # _recalculate_allocation to the capacity-scaled effective
+            # value - raw is what future rescaling always starts from.
+            task_dict['allocated_hours_raw'] = task_dict['allocated_hours']
             task_dict['created_at'] = datetime.utcnow().isoformat()
             task_dict['updated_at'] = datetime.utcnow().isoformat()
             
@@ -29,10 +46,102 @@ class TaskService:
                 .insert(task_dict)\
                 .execute()
             
-            return result.data[0] if result.data else None
+            new_task = result.data[0] if result.data else None
+            if new_task:
+                await self._recalculate_allocation(new_task['assigned_to'])
+                # Re-fetch: the row we have in hand still shows the raw,
+                # un-scaled allocated_hours from the insert response.
+                new_task = await self.get_task_by_id(new_task['id'], assigned_by)
+            return new_task
         except Exception as e:
             logger.error(f"Error creating task: {str(e)}")
             raise
+
+    @staticmethod
+    def _count_working_days(start: date, end: date) -> int:
+        """Inclusive count of working days between start and end.
+
+        Assumes a Mon-Sat week (Sunday off), the common convention here -
+        adjust this if the actual company week differs.
+        """
+        if end < start:
+            return 1
+        days = 0
+        current = start
+        while current <= end:
+            if current.weekday() != 6:  # Sunday
+                days += 1
+            current += timedelta(days=1)
+        return max(days, 1)
+
+    @staticmethod
+    def _parse_date(value) -> Optional[date]:
+        if not value:
+            return None
+        if isinstance(value, date):
+            return value
+        try:
+            return date.fromisoformat(str(value)[:10])
+        except ValueError:
+            return None
+
+    async def _recalculate_allocation(self, employee_id: str) -> None:
+        """Rebalance allocated_hours across one employee's active tasks.
+
+        Each active task keeps admin's raw difficulty estimate
+        (allocated_hours_raw) as its relative weight. If the sum of those
+        raw estimates exceeds what the employee can realistically do
+        between today and their furthest active due date (working days x
+        WORKDAY_HOURS), every active task's effective allocated_hours is
+        scaled down proportionally so the total fits - e.g. 5 tasks each
+        "8 hours" no longer silently implies a fake 40-hour day.
+
+        Runs after anything that changes an employee's active task set or
+        raw estimates: create, update (allocated_hours/due_date/status),
+        status change, delete, reassignment, bulk import.
+        """
+        try:
+            result = self.supabase.table('tasks')\
+                .select('id, allocated_hours_raw, allocated_hours, due_date, status')\
+                .eq('assigned_to', employee_id)\
+                .in_('status', list(self.ACTIVE_STATUSES))\
+                .execute()
+            active_tasks = result.data if result.data else []
+
+            if not active_tasks:
+                return
+
+            today = date.today()
+            due_dates = [d for d in (self._parse_date(t.get('due_date')) for t in active_tasks) if d]
+            furthest_due = max(due_dates) if due_dates else today + timedelta(days=self.DEFAULT_WINDOW_DAYS)
+            if furthest_due < today:
+                furthest_due = today
+
+            working_days = self._count_working_days(today, furthest_due)
+            total_capacity = working_days * self.WORKDAY_HOURS
+
+            total_raw = sum(float(t.get('allocated_hours_raw') or t.get('allocated_hours') or 0) for t in active_tasks)
+
+            scale_factor = 1.0
+            if total_raw > total_capacity and total_raw > 0:
+                scale_factor = total_capacity / total_raw
+
+            for t in active_tasks:
+                raw = float(t.get('allocated_hours_raw') or t.get('allocated_hours') or 0)
+                effective = round(raw * scale_factor, 2)
+                # Skip the write if nothing actually changed (common case:
+                # employee is under capacity, scale_factor stays 1.0 and
+                # allocated_hours already equals raw).
+                if effective == t.get('allocated_hours'):
+                    continue
+                self.supabase.table('tasks')\
+                    .update({'allocated_hours': effective, 'updated_at': datetime.utcnow().isoformat()})\
+                    .eq('id', t['id'])\
+                    .execute()
+        except Exception as e:
+            # Never let a rebalancing failure block the task
+            # create/update/status-change it was triggered from.
+            logger.error(f"Error recalculating allocation for employee {employee_id}: {str(e)}")
 
     @staticmethod
     def _flatten_assignee_names(task: Dict) -> Dict:
@@ -141,13 +250,25 @@ class TaskService:
                 update_data['completed_at'] = datetime.utcnow().isoformat()
                 if 'progress_percentage' not in update_data:
                     update_data['progress_percentage'] = 100
+
+            # A new allocated_hours here is the admin's updated raw
+            # estimate, not the final effective value - same as create_task,
+            # _recalculate_allocation below overwrites allocated_hours
+            # itself with the capacity-scaled figure.
+            needs_recalc = any(k in update_data for k in ('allocated_hours', 'due_date', 'status'))
+            if 'allocated_hours' in update_data:
+                update_data['allocated_hours_raw'] = update_data['allocated_hours']
             
             result = self.supabase.table('tasks')\
                 .update(update_data)\
                 .eq('id', task_id)\
                 .execute()
             
-            return result.data[0] if result.data else None
+            updated = result.data[0] if result.data else None
+            if updated and needs_recalc:
+                await self._recalculate_allocation(updated['assigned_to'])
+                updated = await self.get_task_by_id(task_id, user_id)
+            return updated
         except Exception as e:
             # Re-raise (rather than swallowing to None) so the router's
             # error handler surfaces the actual failure - e.g. a bad
@@ -183,7 +304,14 @@ class TaskService:
                 .eq('id', task_id)\
                 .execute()
             
-            return result.data[0] if result.data else None
+            updated = result.data[0] if result.data else None
+            if updated:
+                # Status changes move a task in/out of the active set
+                # (e.g. completing a task frees up capacity for the
+                # employee's remaining tasks) - always rebalance.
+                await self._recalculate_allocation(updated['assigned_to'])
+                updated = await self.get_task_by_id(task_id, user_id)
+            return updated
         except Exception as e:
             logger.error(f"Error updating task status: {str(e)}")
             return None
@@ -191,11 +319,21 @@ class TaskService:
     async def delete_task(self, task_id: str, user_id: str) -> bool:
         """Delete a task"""
         try:
+            # Grab the assignee before the row is gone, so we can rebalance
+            # their remaining active tasks now that this one's capacity
+            # claim is freed up.
+            existing = self.supabase.table('tasks').select('assigned_to').eq('id', task_id).execute()
+            assigned_to = existing.data[0]['assigned_to'] if existing.data else None
+
             result = self.supabase.table('tasks')\
                 .delete()\
                 .eq('id', task_id)\
                 .execute()
-            return bool(result.data)
+
+            deleted = bool(result.data)
+            if deleted and assigned_to:
+                await self._recalculate_allocation(assigned_to)
+            return deleted
         except Exception as e:
             logger.error(f"Error deleting task: {str(e)}")
             return False
@@ -250,6 +388,7 @@ class TaskService:
             imported = 0
             failed = 0
             errors = []
+            touched_employees = set()
             
             for task_data in tasks_data:
                 try:
@@ -260,12 +399,14 @@ class TaskService:
                         continue
                     
                     # Create task
+                    raw_hours = float(task_data.get('allocated_hours', 1))
                     task_dict = {
                         'title': task_data.get('title'),
                         'description': task_data.get('description', ''),
                         'assigned_to': task_data.get('assigned_to'),
                         'assigned_by': assigned_by,
-                        'allocated_hours': float(task_data.get('allocated_hours', 1)),
+                        'allocated_hours': raw_hours,
+                        'allocated_hours_raw': raw_hours,
                         'priority': task_data.get('priority', 'medium'),
                         'status': 'todo',
                         'progress_percentage': 0,
@@ -283,6 +424,7 @@ class TaskService:
                     
                     if result.data:
                         imported += 1
+                        touched_employees.add(task_data.get('assigned_to'))
                     else:
                         failed += 1
                         errors.append(f"Failed to import task: {task_data.get('title', 'Unknown')}")
@@ -290,6 +432,11 @@ class TaskService:
                 except Exception as e:
                     failed += 1
                     errors.append(f"Error importing task {task_data.get('title', 'Unknown')}: {str(e)}")
+
+            # Rebalance each affected employee once, after all their
+            # imported tasks exist, rather than after every single insert.
+            for employee_id in touched_employees:
+                await self._recalculate_allocation(employee_id)
             
             return {
                 'imported': imported,
