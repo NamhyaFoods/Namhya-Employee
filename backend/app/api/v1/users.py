@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from supabase import Client
 from typing import List, Optional
-from app.schemas.user import UserResponse, UserUpdate, UserCreate, BulkImportResponse
+from app.schemas.user import UserResponse, UserUpdate, UserCreate, BulkImportResponse, AdminPasswordUpdate
 from app.services.user_service import UserService
 from app.db.supabase import get_supabase, get_supabase_admin
 from app.dependencies import get_current_user, get_current_admin
@@ -118,6 +118,40 @@ async def update_user(
         raise
     except Exception as e:
         logger.error(f"Error updating user: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+@router.put("/{user_id}/password")
+async def update_user_password(
+    user_id: str,
+    password_data: AdminPasswordUpdate,
+    current_user: dict = Depends(get_current_admin)
+):
+    """Set a user's password directly (admin only).
+
+    For when mam needs to reset an employee's login without waiting on
+    the self-service forgot-password email flow. Goes through Supabase
+    Auth via the service-role client - see get_users for why the
+    service-role client is required here too.
+    """
+    try:
+        supabase = get_supabase_admin()
+        user_service = UserService(supabase)
+        result = await user_service.update_user_password(user_id, password_data.new_password)
+
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        return {"message": "Password updated successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating password: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
