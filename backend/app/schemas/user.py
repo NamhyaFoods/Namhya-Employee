@@ -34,12 +34,6 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
-class AdminPasswordUpdate(BaseModel):
-    """Admin-set password for another user (e.g. an employee who forgot
-    theirs or needs a reset). Separate from self-service reset, which goes
-    through Supabase's email-link flow instead."""
-    new_password: str = Field(..., min_length=6)
-
 class UserResponse(UserBase):
     id: str
     auth_user_id: Optional[str] = None
