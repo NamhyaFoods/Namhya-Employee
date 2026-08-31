@@ -30,6 +30,8 @@ const EditEmployee: React.FC = () => {
     role: 'employee',
     is_active: true,
   })
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
 
   useEffect(() => {
     if (!id) return
@@ -62,9 +64,25 @@ const EditEmployee: React.FC = () => {
     e.preventDefault()
     if (!id) return
 
+    // Password fields are optional here - only validate/send if mam
+    // actually typed something into them.
+    if (newPassword || confirmPassword) {
+      if (newPassword.length < 6) {
+        toast.error('New password must be at least 6 characters')
+        return
+      }
+      if (newPassword !== confirmPassword) {
+        toast.error('Passwords do not match')
+        return
+      }
+    }
+
     setSaving(true)
     try {
       await usersApi.update(id, formData)
+      if (newPassword) {
+        await usersApi.updatePassword(id, newPassword)
+      }
       toast.success('Employee updated')
       navigate(`/admin/employees/${id}`)
     } catch (error: any) {
@@ -133,6 +151,26 @@ const EditEmployee: React.FC = () => {
             value={formData.phone_number}
             onChange={handleChange('phone_number')}
           />
+          <div className="border-t pt-4">
+            <p className="label mb-2">Reset Password (optional)</p>
+            <div className="space-y-4">
+              <Input
+                label="New Password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                helper="Leave blank to keep the employee's current password."
+                placeholder="Leave blank to keep current password"
+              />
+              <Input
+                label="Confirm New Password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Re-enter new password"
+              />
+            </div>
+          </div>
           <div>
             <label className="label">Status</label>
             <select
