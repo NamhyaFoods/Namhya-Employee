@@ -44,6 +44,10 @@ export const usersApi = {
     return response.data
   },
 
+  updatePassword: async (id: string, newPassword: string): Promise<void> => {
+    await api.put(`/users/${id}/password`, { new_password: newPassword })
+  },
+
   delete: async (id: string): Promise<void> => {
     await api.delete(`/users/${id}`)
   },
