@@ -70,29 +70,7 @@ class UserService:
             logger.error(f"Error creating user: {str(e)}")
             raise
 
-    async def update_user_password(self, user_id: str, new_password: str) -> bool:
-        """Admin-set a user's password directly.
-
-        Passwords live in Supabase Auth (auth.users), not in our own
-        `users` table (see create_user's note on auth.admin.create_user),
-        so this has to go through auth.admin.update_user_by_id() on the
-        service-role client rather than a plain table update. Requires
-        the target user's auth_user_id, which we look up from our table
-        since the caller only has our internal user_id.
-        """
-        try:
-            user = await self.get_user_by_id(user_id)
-            if not user or not user.get('auth_user_id'):
-                return False
-
-            self.supabase.auth.admin.update_user_by_id(
-                user['auth_user_id'],
-                {"password": new_password}
-            )
-            return True
-        except Exception as e:
-            logger.error(f"Error updating password for user {user_id}: {str(e)}")
-            raise
+    async def get_user_by_id(self, user_id: str) -> Optional[Dict]:
         """Get user by ID"""
         try:
             result = self.supabase.table('users')\
