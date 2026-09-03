@@ -3,22 +3,40 @@ import { useParams, useNavigate } from 'react-router-dom'
 import AdminLayout from '../../components/common/Layout/AdminLayout'
 import Spinner from '../../components/common/Loading/Spinner'
 import { reviewsApi } from '../../api/reviews'
-import { Review } from '../../types/performance'
+import { Review, KPI } from '../../types/performance'
 import { formatDate, formatScore, getScoreCategory, getScoreColor } from '../../utils/formatters'
-import { FaArrowLeft } from 'react-icons/fa'
+import { FaArrowLeft, FaPlus } from 'react-icons/fa'
+import KPIForm from '../../components/admin/Performance/KPIForm'
+import KPIList from '../../components/admin/Performance/KPIList'
+import WeightedScoreSummary from '../../components/admin/Performance/WeightedScoreSummary'
 
 const ReviewDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [review, setReview] = useState<Review | null>(null)
   const [loading, setLoading] = useState(true)
+  const [kpis, setKpis] = useState<KPI[]>([])
+  const [kpisLoading, setKpisLoading] = useState(true)
+  const [showKPIForm, setShowKPIForm] = useState(false)
 
   useEffect(() => {
     if (!id) return
     reviewsApi
       .getById(id)
-      .then(setReview)
-      .finally(() => setLoading(false))
+      .then((r) => {
+        setReview(r)
+        // KPIs are fetched by user_id and scoped to this review via
+        // review_id so the list only shows targets set for this specific
+        // monthly review, not the employee's full KPI history.
+        setKpisLoading(true)
+        return reviewsApi.getKPI(r.user_id, r.id)
+      })
+      .then(setKpis)
+      .catch(() => {})
+      .finally(() => {
+        setLoading(false)
+        setKpisLoading(false)
+      })
   }, [id])
 
   if (loading) {
@@ -108,7 +126,38 @@ const ReviewDetail: React.FC = () => {
             <p className="text-gray-700 text-sm">{review.reviewer_comments}</p>
           </div>
         )}
+
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-display font-semibold text-gray-900">KRA / Targets</h2>
+            <button
+              onClick={() => setShowKPIForm(true)}
+              className="btn-secondary flex items-center gap-2 text-sm"
+            >
+              <FaPlus /> Add KPI
+            </button>
+          </div>
+          {kpisLoading ? (
+            <div className="flex justify-center py-8">
+              <Spinner />
+            </div>
+          ) : (
+            <>
+              <WeightedScoreSummary kpis={kpis} />
+              <KPIList kpis={kpis} emptyMessage="No KPIs set for this review yet." />
+            </>
+          )}
+        </div>
       </div>
+
+      {showKPIForm && (
+        <KPIForm
+          userId={review.user_id}
+          reviewId={review.id}
+          onClose={() => setShowKPIForm(false)}
+          onCreated={(kpi) => setKpis((prev) => [kpi, ...prev])}
+        />
+      )}
     </AdminLayout>
   )
 }
