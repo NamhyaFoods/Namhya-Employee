@@ -10,12 +10,19 @@ import { reviewsApi } from '../../api/reviews'
 import { formatScore, getScoreCategory, getScoreColor } from '../../utils/formatters'
 import { FaChartBar, FaCalendar, FaStar, FaTrophy } from 'react-icons/fa'
 import toast from 'react-hot-toast'
+import { KPI } from '../../types/performance'
+import KPIList from '../../components/admin/Performance/KPIList'
+import WeightedScoreSummary from '../../components/admin/Performance/WeightedScoreSummary'
+import { useAuth } from '../../contexts/AuthContext'
 
 const MyPerformance: React.FC = () => {
+  const { user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [performance, setPerformance] = useState<any>(null)
   const [reviews, setReviews] = useState<any[]>([])
   const [trendData, setTrendData] = useState<any[]>([])
+  const [kpis, setKpis] = useState<KPI[]>([])
+  const [kpisLoading, setKpisLoading] = useState(true)
 
   useEffect(() => {
     fetchPerformanceData()
@@ -40,6 +47,21 @@ const MyPerformance: React.FC = () => {
         completion: r.completion_rate,
       }))
       setTrendData(trend.reverse())
+
+      // KPIs are scoped to the most recent review, matching how the admin
+      // ReviewDetail page shows targets per review rather than a single
+      // lifetime list.
+      if (user?.id) {
+        setKpisLoading(true)
+        const latestReviewId = reviewsData[0]?.id
+        reviewsApi
+          .getKPI(user.id, latestReviewId)
+          .then(setKpis)
+          .catch(() => {})
+          .finally(() => setKpisLoading(false))
+      } else {
+        setKpisLoading(false)
+      }
     } catch (error) {
       toast.error('Failed to load performance data')
     } finally {
@@ -187,6 +209,21 @@ const MyPerformance: React.FC = () => {
                 </div>
               ))}
             </div>
+          )}
+        </div>
+
+        {/* KRA / Targets */}
+        <div className="card">
+          <h3 className="text-lg font-semibold mb-4">KRA / Targets</h3>
+          {kpisLoading ? (
+            <div className="flex justify-center py-8">
+              <Spinner />
+            </div>
+          ) : (
+            <>
+              <WeightedScoreSummary kpis={kpis} />
+              <KPIList kpis={kpis} emptyMessage="No KPIs set for you yet." />
+            </>
           )}
         </div>
       </div>
