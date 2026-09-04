@@ -18,6 +18,7 @@ const CreateTask: React.FC = () => {
   const isEditMode = Boolean(id)
 
   const [loading, setLoading] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [initialLoading, setInitialLoading] = useState(isEditMode)
   const [employees, setEmployees] = useState<User[]>([])
   const [formData, setFormData] = useState({
@@ -102,6 +103,20 @@ const CreateTask: React.FC = () => {
     }
   }
 
+  const handleDelete = async () => {
+    if (!id) return
+    if (!window.confirm('Are you sure you want to delete this task? This cannot be undone.')) return
+    setDeleting(true)
+    try {
+      await tasksApi.delete(id)
+      toast.success('Task deleted')
+      navigate('/admin/tasks')
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || 'Failed to delete task')
+      setDeleting(false)
+    }
+  }
+
   if (initialLoading) {
     return (
       <AdminLayout>
@@ -113,9 +128,21 @@ const CreateTask: React.FC = () => {
   return (
     <AdminLayout>
       <div className="p-6 max-w-2xl">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">
-          {isEditMode ? 'Edit Task' : 'Create Task'}
-        </h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">
+            {isEditMode ? 'Edit Task' : 'Create Task'}
+          </h1>
+          {isEditMode && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="text-red-600 hover:text-red-800 text-sm font-medium"
+            >
+              {deleting ? 'Deleting...' : 'Delete Task'}
+            </button>
+          )}
+        </div>
         <form onSubmit={handleSubmit} className="bg-surface rounded-xl shadow-sm p-6 space-y-4">
           <Input
             label="Title"
@@ -147,7 +174,6 @@ const CreateTask: React.FC = () => {
             onChange={(e) =>
               setFormData({ ...formData, allocated_hours: Number(e.target.value) })
             }
-            helper="Enter the difficulty estimate for this task alone. If the employee already has other active tasks, the system will automatically scale everyone's hours down to fit their real capacity (9 hrs/day, Mon-Sat)."
             required
           />
           <Select
