@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import Input from '../../shared/Forms/Input'
-import Select from '../../shared/Forms/Select'
 import TextArea from '../../shared/Forms/TextArea'
 import { reviewsApi } from '../../../api/reviews'
 import { KPI } from '../../../types/performance'
@@ -24,7 +23,6 @@ const KPIForm: React.FC<KPIFormProps> = ({ userId, reviewId, onClose, onCreated 
     achieved_value: '',
     rto_percent: '',
     weight_percent: '25',
-    measurement_unit: '',
     notes: '',
   })
 
@@ -37,8 +35,7 @@ const KPIForm: React.FC<KPIFormProps> = ({ userId, reviewId, onClose, onCreated 
     setForm({ ...form, [field]: e.target.value })
   }
 
-  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value
+  const handleCategorySelect = (value: string) => {
     const def = getCategoryDef(value)
     setForm({
       ...form,
@@ -82,7 +79,7 @@ const KPIForm: React.FC<KPIFormProps> = ({ userId, reviewId, onClose, onCreated 
           : (form.achieved_value ? parseFloat(form.achieved_value) : undefined),
         score,
         weight_percent: parseInt(form.weight_percent, 10) || 0,
-        measurement_unit: isRTO ? '%' : (form.measurement_unit || undefined),
+        measurement_unit: isRTO ? '%' : undefined,
         notes: combinedNotes || undefined,
       }
       const created = await reviewsApi.createKPI(payload)
@@ -120,13 +117,28 @@ const KPIForm: React.FC<KPIFormProps> = ({ userId, reviewId, onClose, onCreated 
             required
           />
 
-          <Select
-            id="kpi_category"
-            label="Category"
-            options={KPI_CATEGORIES.map((c) => ({ value: c.value, label: c.label }))}
-            value={form.kpi_category}
-            onChange={handleCategoryChange}
-          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Category</label>
+            <div className="flex flex-wrap gap-2">
+              {KPI_CATEGORIES.map((c) => {
+                const selected = form.kpi_category === c.value
+                return (
+                  <button
+                    key={c.value}
+                    type="button"
+                    onClick={() => handleCategorySelect(c.value)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                      selected
+                        ? 'bg-primary-600 text-white border-primary-600'
+                        : 'bg-white text-gray-600 border-gray-300 hover:border-primary-400'
+                    }`}
+                  >
+                    {c.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
 
           {isRTO ? (
             <>
@@ -177,26 +189,16 @@ const KPIForm: React.FC<KPIFormProps> = ({ userId, reviewId, onClose, onCreated 
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              id="measurement_unit"
-              label="Unit"
-              placeholder="e.g. tickets, %, hrs"
-              value={isRTO ? '%' : form.measurement_unit}
-              onChange={handleChange('measurement_unit')}
-              disabled={isRTO}
-            />
-            <Input
-              id="weight_percent"
-              label="Weight %"
-              type="number"
-              min={0}
-              max={100}
-              value={form.weight_percent}
-              onChange={handleChange('weight_percent')}
-              disabled={categoryDef?.fixedWeight != null}
-            />
-          </div>
+          <Input
+            id="weight_percent"
+            label="Weight %"
+            type="number"
+            min={0}
+            max={100}
+            value={form.weight_percent}
+            onChange={handleChange('weight_percent')}
+            disabled={categoryDef?.fixedWeight != null}
+          />
 
           <div className="bg-gray-50 rounded-lg p-3 flex items-center justify-between text-sm">
             <span className="text-gray-500">
