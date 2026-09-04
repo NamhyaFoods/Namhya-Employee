@@ -105,14 +105,45 @@ class PerformanceService:
             return {}
 
     async def get_performance_trend(self, user_id: str, months: int = 6) -> List[Dict]:
-        """Get performance trend for a user"""
+        """Get performance trend for a user.
+
+        This used to call a get_employee_performance_history RPC function
+        that was referenced here but never actually defined in any
+        migration - every call raised, got caught below, and returned [].
+        That's why the Admin "Performance Trends" chart was always empty
+        (see performanceApi.getTrend in Admin/Performance.tsx) even for
+        employees with months of review history. Querying
+        performance_reviews directly avoids depending on a DB function at
+        all - same source of truth the employee-side trend chart
+        (MyPerformance.tsx) already builds itself from get_user_reviews.
+        """
         try:
-            result = self.supabase.rpc(
-                'get_employee_performance_history',
-                {'p_user_id': user_id, 'p_months_back': months}
-            ).execute()
-            
-            return result.data if result.data else []
+            result = self.supabase.table('performance_reviews')\
+                .select('review_month, total_tasks_completed, average_efficiency, average_timeliness_score, final_work_score')\
+                .eq('user_id', user_id)\
+                .order('review_month', desc=True)\
+                .limit(months)\
+                .execute()
+
+            rows = result.data if result.data else []
+            # PerformanceTrendResponse expects avg_efficiency /
+            # avg_timeliness_score, but the table columns are named
+            # average_efficiency / average_timeliness_score - rename here
+            # rather than changing the schema field names the rest of the
+            # app (and the response model) already relies on.
+            trend = [
+                {
+                    'review_month': row['review_month'],
+                    'total_tasks_completed': row.get('total_tasks_completed', 0),
+                    'avg_efficiency': row.get('average_efficiency', 0),
+                    'avg_timeliness_score': row.get('average_timeliness_score', 0),
+                    'final_work_score': row.get('final_work_score', 0),
+                }
+                for row in rows
+            ]
+            # Oldest-to-newest, matching what a trend line/chart expects.
+            trend.reverse()
+            return trend
         except Exception as e:
             logger.error(f"Error getting performance trend: {str(e)}")
             return []
