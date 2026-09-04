@@ -246,7 +246,7 @@ class ReviewService:
                 'updated_at': datetime.utcnow().isoformat()
             }
             
-            if review_data.get('quality_score'):
+            if review_data.get('quality_score') is not None:
                 # Recalculate score if quality score changes
                 # Get existing review
                 existing = self.supabase.table('performance_reviews')\
