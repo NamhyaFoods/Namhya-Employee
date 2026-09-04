@@ -26,15 +26,23 @@ class ScoreService:
     ) -> Dict:
         """Calculate work score with configurable weights"""
         
-        # Use provided weights or defaults
-        eff_weight = efficiency_weight or self.efficiency_weight
-        comp_weight = completion_weight or self.completion_weight
-        time_weight = timeliness_weight or self.timeliness_weight
-        qual_weight = quality_weight or self.quality_weight
+        # Use provided weights or defaults. `is not None` (not plain `or`)
+        # so an explicitly-passed weight of 0 - a legitimate choice, e.g.
+        # "don't count quality at all" - is respected instead of silently
+        # falling back to the default weight.
+        eff_weight = efficiency_weight if efficiency_weight is not None else self.efficiency_weight
+        comp_weight = completion_weight if completion_weight is not None else self.completion_weight
+        time_weight = timeliness_weight if timeliness_weight is not None else self.timeliness_weight
+        qual_weight = quality_weight if quality_weight is not None else self.quality_weight
         
         # Ensure weights sum to 100
         total_weight = eff_weight + comp_weight + time_weight + qual_weight
-        if total_weight != 100:
+        if total_weight == 0:
+            # All four weights explicitly zeroed out - nothing to
+            # normalize against, so just leave every score's contribution
+            # at zero rather than dividing by zero.
+            eff_weight = comp_weight = time_weight = qual_weight = 0
+        elif total_weight != 100:
             # Normalize weights
             eff_weight = (eff_weight / total_weight) * 100
             comp_weight = (comp_weight / total_weight) * 100
