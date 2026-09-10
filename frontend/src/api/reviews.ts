@@ -65,4 +65,13 @@ export const reviewsApi = {
     const response = await api.post('/reviews/kpi', data)
     return response.data
   },
+
+  updateKPI: async (kpiId: string, data: Partial<KPI>): Promise<KPI> => {
+    const response = await api.put(`/reviews/kpi/${kpiId}`, data)
+    return response.data
+  },
+
+  deleteKPI: async (kpiId: string): Promise<void> => {
+    await api.delete(`/reviews/kpi/${kpiId}`)
+  },
 }
