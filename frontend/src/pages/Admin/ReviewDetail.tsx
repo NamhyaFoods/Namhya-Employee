@@ -6,6 +6,7 @@ import { reviewsApi } from '../../api/reviews'
 import { Review, KPI } from '../../types/performance'
 import { formatDate, formatScore, getScoreCategory, getScoreColor } from '../../utils/formatters'
 import { FaArrowLeft, FaPlus } from 'react-icons/fa'
+import toast from 'react-hot-toast'
 import KPIForm from '../../components/admin/Performance/KPIForm'
 import KPIList from '../../components/admin/Performance/KPIList'
 import WeightedScoreSummary from '../../components/admin/Performance/WeightedScoreSummary'
@@ -18,6 +19,10 @@ const ReviewDetail: React.FC = () => {
   const [kpis, setKpis] = useState<KPI[]>([])
   const [kpisLoading, setKpisLoading] = useState(true)
   const [showKPIForm, setShowKPIForm] = useState(false)
+  // Which KPI is currently being edited, if any. Set -> KPIForm opens
+  // pre-filled in edit mode; null/undefined -> KPIForm opens blank for
+  // creating a new one.
+  const [editingKPI, setEditingKPI] = useState<KPI | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -38,6 +43,17 @@ const ReviewDetail: React.FC = () => {
         setKpisLoading(false)
       })
   }, [id])
+
+  const handleDeleteKPI = async (kpi: KPI) => {
+    if (!window.confirm(`Delete "${kpi.kpi_name}"? This can't be undone.`)) return
+    try {
+      await reviewsApi.deleteKPI(kpi.id)
+      toast.success('KPI deleted')
+      setKpis((prev) => prev.filter((k) => k.id !== kpi.id))
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || 'Failed to delete KPI')
+    }
+  }
 
   if (loading) {
     return (
@@ -144,18 +160,31 @@ const ReviewDetail: React.FC = () => {
           ) : (
             <>
               <WeightedScoreSummary kpis={kpis} />
-              <KPIList kpis={kpis} emptyMessage="No KPIs set for this review yet." />
+              <KPIList
+                kpis={kpis}
+                emptyMessage="No KPIs set for this review yet."
+                onEdit={(kpi) => setEditingKPI(kpi)}
+                onDelete={handleDeleteKPI}
+              />
             </>
           )}
         </div>
       </div>
 
-      {showKPIForm && (
+      {(showKPIForm || editingKPI) && (
         <KPIForm
           userId={review.user_id}
           reviewId={review.id}
-          onClose={() => setShowKPIForm(false)}
-          onCreated={(kpi) => setKpis((prev) => [kpi, ...prev])}
+          kpi={editingKPI || undefined}
+          onClose={() => {
+            setShowKPIForm(false)
+            setEditingKPI(null)
+          }}
+          onSaved={(kpi) => {
+            setKpis((prev) =>
+              editingKPI ? prev.map((k) => (k.id === kpi.id ? kpi : k)) : [kpi, ...prev]
+            )
+          }}
         />
       )}
     </AdminLayout>
