@@ -10,20 +10,41 @@ import { FaTimes, FaExclamationTriangle } from 'react-icons/fa'
 interface KPIFormProps {
   userId: string
   reviewId?: string
+  // When set, the form edits this existing KPI (PUT) instead of creating
+  // a new one (POST), pre-filled with its current values.
+  kpi?: KPI
   onClose: () => void
-  onCreated: (kpi: KPI) => void
+  onSaved: (kpi: KPI) => void
 }
 
-const KPIForm: React.FC<KPIFormProps> = ({ userId, reviewId, onClose, onCreated }) => {
+const KPIForm: React.FC<KPIFormProps> = ({ userId, reviewId, kpi, onClose, onSaved }) => {
+  const isEditMode = !!kpi
   const [submitting, setSubmitting] = useState(false)
-  const [form, setForm] = useState({
-    kpi_name: '',
-    kpi_category: '',
-    target_value: '',
-    achieved_value: '',
-    rto_percent: '',
-    weight_percent: '25',
-    notes: '',
+  const [form, setForm] = useState(() => {
+    if (!kpi) {
+      return {
+        kpi_name: '',
+        kpi_category: '',
+        target_value: '',
+        achieved_value: '',
+        rto_percent: '',
+        weight_percent: '25',
+        notes: '',
+      }
+    }
+    const isRTOKpi = getCategoryDef(kpi.kpi_category)?.isRTO
+    return {
+      kpi_name: kpi.kpi_name,
+      kpi_category: kpi.kpi_category || '',
+      target_value: kpi.target_value != null ? String(kpi.target_value) : '',
+      achieved_value: !isRTOKpi && kpi.achieved_value != null ? String(kpi.achieved_value) : '',
+      rto_percent: isRTOKpi && kpi.achieved_value != null ? String(kpi.achieved_value) : '',
+      weight_percent: String(kpi.weight_percent ?? 25),
+      // Notes previously had the auto-generated RTO tier line prepended
+      // on create - don't re-prepend a second one on top of it when
+      // editing, just leave the stored notes as-is for the admin to edit.
+      notes: kpi.notes || '',
+    }
   })
 
   const categoryDef = getCategoryDef(form.kpi_category)
@@ -63,7 +84,7 @@ const KPIForm: React.FC<KPIFormProps> = ({ userId, reviewId, onClose, onCreated 
 
     setSubmitting(true)
     try {
-      const autoNote = isRTO && rtoTier
+      const autoNote = !isEditMode && isRTO && rtoTier
         ? `Tier: ${rtoTier.tierLabel} → ${rtoTier.variablePercent}% variable${rtoTier.isPenaltyTBD ? ' (TODO: confirm penalty with manager)' : ''}`
         : undefined
       const combinedNotes = [autoNote, form.notes || undefined].filter(Boolean).join(' — ')
@@ -82,12 +103,14 @@ const KPIForm: React.FC<KPIFormProps> = ({ userId, reviewId, onClose, onCreated 
         measurement_unit: isRTO ? '%' : undefined,
         notes: combinedNotes || undefined,
       }
-      const created = await reviewsApi.createKPI(payload)
-      toast.success('KPI added')
-      onCreated(created)
+      const saved = isEditMode
+        ? await reviewsApi.updateKPI(kpi!.id, payload)
+        : await reviewsApi.createKPI(payload)
+      toast.success(isEditMode ? 'KPI updated' : 'KPI added')
+      onSaved(saved)
       onClose()
     } catch (error: any) {
-      toast.error(error?.response?.data?.detail || 'Failed to add KPI')
+      toast.error(error?.response?.data?.detail || `Failed to ${isEditMode ? 'update' : 'add'} KPI`)
     } finally {
       setSubmitting(false)
     }
@@ -97,7 +120,9 @@ const KPIForm: React.FC<KPIFormProps> = ({ userId, reviewId, onClose, onCreated 
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
       <div className="card w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-display font-semibold text-gray-900">Add KPI / Target</h2>
+          <h2 className="text-lg font-display font-semibold text-gray-900">
+            {isEditMode ? 'Edit KPI / Target' : 'Add KPI / Target'}
+          </h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-700"
@@ -221,7 +246,7 @@ const KPIForm: React.FC<KPIFormProps> = ({ userId, reviewId, onClose, onCreated 
               Cancel
             </button>
             <button type="submit" disabled={submitting} className="btn-primary">
-              {submitting ? 'Saving...' : 'Add KPI'}
+              {submitting ? 'Saving...' : isEditMode ? 'Save Changes' : 'Add KPI'}
             </button>
           </div>
         </form>
