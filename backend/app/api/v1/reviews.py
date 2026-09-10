@@ -211,6 +211,74 @@ async def create_kpi_score(
             detail=str(e)
         )
 
+@router.put("/kpi/{kpi_id}")
+async def update_kpi_score(
+    kpi_id: str,
+    kpi_data: dict,
+    current_user: dict = Depends(get_current_admin)
+):
+    """Update KPI score (admin only)"""
+    try:
+        supabase = get_supabase_admin()
+        kpi_data['updated_at'] = datetime.utcnow().isoformat()
+        # These are set once at creation and identify which user/review the
+        # KPI belongs to - an edit shouldn't be able to reassign a KPI to a
+        # different employee or review by way of the form's own state.
+        kpi_data.pop('user_id', None)
+        kpi_data.pop('review_id', None)
+        kpi_data.pop('id', None)
+        kpi_data.pop('created_at', None)
+
+        result = supabase.table('kpi_scores')\
+            .update(kpi_data)\
+            .eq('id', kpi_id)\
+            .execute()
+
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="KPI not found"
+            )
+
+        return result.data[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating KPI score: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+@router.delete("/kpi/{kpi_id}")
+async def delete_kpi_score(
+    kpi_id: str,
+    current_user: dict = Depends(get_current_admin)
+):
+    """Delete KPI score (admin only)"""
+    try:
+        supabase = get_supabase_admin()
+        result = supabase.table('kpi_scores')\
+            .delete()\
+            .eq('id', kpi_id)\
+            .execute()
+
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="KPI not found"
+            )
+
+        return {"message": "KPI deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting KPI score: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
 @router.get("/{review_id}", response_model=ReviewResponse)
 async def get_review(
     review_id: str,
